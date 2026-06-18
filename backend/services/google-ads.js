@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE = 'https://googleads.googleapis.com/v20';
+const BASE = 'https://googleads.googleapis.com/v22';
 
 // Cache keyed by clientId + oauth_client_id so credential changes invalidate automatically
 const _tokenCache = new Map();
