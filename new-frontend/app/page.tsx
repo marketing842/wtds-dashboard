@@ -81,35 +81,38 @@ export default function OverviewPage() {
 
       const { ps, pe } = getPrevRange(startDate, endDate)
 
+      async function safeFetch(url: string): Promise<any> {
+        const r = await apiFetch(url)
+        if (r.ok) return r.json()
+        const body = await r.json().catch(() => ({}))
+        throw new Error(body.error ?? body.detail ?? `HTTP ${r.status}`)
+      }
+
       // Fire all fetches independently — each updates as it completes
-      apiFetch(`/api/google-ads/summary?start=${startDate}&end=${endDate}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      safeFetch(`/api/google-ads/summary?start=${startDate}&end=${endDate}`)
         .then(d => setGAds(d))
-        .catch(e => setErrors(prev => ({ ...prev, gAds: `${e}` })))
+        .catch(e => setErrors(prev => ({ ...prev, gAds: e.message })))
         .finally(() => setLoadingChannels(prev => ({ ...prev, gAds: false })))
 
-      apiFetch(`/api/google-ads/summary?start=${ps}&end=${pe}`)
-        .then(r => r.ok ? r.json() : null).then(d => d && setGAdsPrev(d)).catch(() => {})
+      safeFetch(`/api/google-ads/summary?start=${ps}&end=${pe}`)
+        .then(d => setGAdsPrev(d)).catch(() => {})
 
-      apiFetch(`/api/meta/summary?start=${startDate}&end=${endDate}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      safeFetch(`/api/meta/summary?start=${startDate}&end=${endDate}`)
         .then(d => setMeta(d))
-        .catch(e => setErrors(prev => ({ ...prev, meta: `${e}` })))
+        .catch(e => setErrors(prev => ({ ...prev, meta: e.message })))
         .finally(() => setLoadingChannels(prev => ({ ...prev, meta: false })))
 
-      apiFetch(`/api/meta/summary?start=${ps}&end=${pe}`)
-        .then(r => r.ok ? r.json() : null).then(d => d && setMetaPrev(d)).catch(() => {})
+      safeFetch(`/api/meta/summary?start=${ps}&end=${pe}`)
+        .then(d => setMetaPrev(d)).catch(() => {})
 
-      apiFetch(`/api/klaviyo/summary?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      safeFetch(`/api/klaviyo/summary?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`)
         .then(d => setKlaviyo(d))
-        .catch(e => setErrors(prev => ({ ...prev, klaviyo: `${e}` })))
+        .catch(e => setErrors(prev => ({ ...prev, klaviyo: e.message })))
         .finally(() => setLoadingChannels(prev => ({ ...prev, klaviyo: false })))
 
-      apiFetch(`/api/search-console/summary?start=${startDate}&end=${endDate}`)
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      safeFetch(`/api/search-console/summary?start=${startDate}&end=${endDate}`)
         .then(d => setGsc(d))
-        .catch(e => setErrors(prev => ({ ...prev, gsc: `${e}` })))
+        .catch(e => setErrors(prev => ({ ...prev, gsc: e.message })))
         .finally(() => setLoadingChannels(prev => ({ ...prev, gsc: false })))
     }, 600)
     return () => clearTimeout(t)
