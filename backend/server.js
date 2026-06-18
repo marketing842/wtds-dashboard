@@ -210,10 +210,10 @@ app.get('/api/google-ads/summary', async (req, res) => {
     const data = await cached(`gas_${req.client.id}_${start}_${end}`, () => getGoogleAdsSummary(cid, start, end, gCreds), 5 * 60 * 1000);
     res.json(data);
   } catch (err) {
-    const gErr = err.response?.data?.error ?? err.response?.data;
-    const msg = gErr?.message ?? gErr?.status ?? err.message;
-    console.error('[google-ads/summary]', gErr ?? err.message);
-    res.status(500).json({ error: msg, detail: gErr });
+    const d = err.response?.data;
+    const msg = d?.error?.message ?? d?.error_description ?? (typeof d?.error === 'string' ? d.error : null) ?? err.message;
+    console.error('[google-ads/summary]', d ?? err.message);
+    res.status(500).json({ error: msg, detail: d });
   }
 });
 
