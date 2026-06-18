@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE = 'https://graph.facebook.com/v20.0';
+const BASE = 'https://graph.facebook.com/v22.0';
 
 function parseNum(v) { return parseFloat(v ?? 0) || 0; }
 function parseInt2(v) { return parseInt(v ?? 0) || 0; }

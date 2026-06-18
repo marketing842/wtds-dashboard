@@ -258,8 +258,10 @@ app.get('/api/meta/summary', async (req, res) => {
     const data = await cached(`ms_${req.client.id}_${start}_${end}`, () => getMetaSummary(start, end, creds.meta), 5 * 60 * 1000);
     res.json(data);
   } catch (err) {
-    console.error('[meta/summary]', err.response?.data || err.message);
-    res.status(500).json({ error: err.message, detail: err.response?.data });
+    const fb = err.response?.data?.error;
+    const msg = fb?.message ?? err.message;
+    console.error('[meta/summary]', fb ?? err.message);
+    res.status(500).json({ error: msg, code: fb?.code, detail: err.response?.data });
   }
 });
 
@@ -272,8 +274,10 @@ app.get('/api/meta/campaigns', async (req, res) => {
     const data = await cached(`mc_${req.client.id}_${start}_${end}`, () => getMetaCampaigns(start, end, creds.meta), 5 * 60 * 1000);
     res.json(data);
   } catch (err) {
-    console.error('[meta/campaigns]', err.response?.data || err.message);
-    res.status(500).json({ error: err.message, detail: err.response?.data });
+    const fb = err.response?.data?.error;
+    const msg = fb?.message ?? err.message;
+    console.error('[meta/campaigns]', fb ?? err.message);
+    res.status(500).json({ error: msg, code: fb?.code, detail: err.response?.data });
   }
 });
 
@@ -286,8 +290,10 @@ app.get('/api/meta/creatives', async (req, res) => {
     const data = await cached(`mcr_${req.client.id}_${start}_${end}`, () => getMetaAdCreatives(start, end, creds.meta), 5 * 60 * 1000);
     res.json(data);
   } catch (err) {
-    console.error('[meta/creatives]', err.response?.data || err.message);
-    res.status(500).json({ error: err.message, detail: err.response?.data });
+    const fb = err.response?.data?.error;
+    const msg = fb?.message ?? err.message;
+    console.error('[meta/creatives]', fb ?? err.message);
+    res.status(500).json({ error: msg, code: fb?.code, detail: err.response?.data });
   }
 });
 

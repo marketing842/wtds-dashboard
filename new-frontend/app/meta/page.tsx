@@ -54,7 +54,8 @@ export default function MetaPage() {
         ])
         if (!sumRes.ok) {
           const body = await sumRes.json().catch(() => ({}))
-          throw new Error(body?.detail?.error?.message ?? body?.error ?? `HTTP ${sumRes.status}`)
+          const code = body?.code ? ` (code ${body.code})` : ''
+          throw new Error((body?.error ?? `HTTP ${sumRes.status}`) + code)
         }
         const [s, sp, c, cr] = await Promise.all([
           sumRes.json(),
@@ -98,7 +99,7 @@ export default function MetaPage() {
 
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded p-4 text-red-700 dark:text-red-300 text-sm mb-8">
-                {error} — Is the backend running on port 3000?
+                {error}
               </div>
             )}
 
