@@ -2,11 +2,11 @@ import axios from 'axios';
 
 const BASE = 'https://googleads.googleapis.com/v20';
 
-// Per-client token cache keyed by clientId
+// Cache keyed by clientId + oauth_client_id so credential changes invalidate automatically
 const _tokenCache = new Map();
 
 async function getAccessToken(creds) {
-  const key = creds.clientId;
+  const key = `${creds.clientId}_${creds.oauth_client_id}`;
   const cached = _tokenCache.get(key);
   if (cached && Date.now() < cached.expiry - 60_000) return cached.token;
 
