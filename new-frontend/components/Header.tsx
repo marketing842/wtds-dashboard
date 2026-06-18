@@ -1,0 +1,92 @@
+'use client'
+
+import { DateRangePicker } from '@/components/DateRangePicker'
+import { ModeToggle } from '@/components/ModeToggle'
+import { useClientInfo } from '@/lib/client-context'
+
+export function Header({ title, description }: { title: string; description?: string }) {
+  const clientInfo = useClientInfo()
+
+  return (
+    <header
+      className="h-16 sticky top-0 z-40 flex items-center"
+      style={{
+        background:   'var(--surface)',
+        borderBottom: '1px solid var(--border)',
+        boxShadow:    '0 1px 0 var(--border), 0 2px 8px rgba(0,0,0,0.04)',
+      }}
+    >
+      <div className="flex-1 px-8 flex items-center justify-between gap-6">
+
+        {/* ── Page title ── */}
+        <div className="min-w-0">
+          <h1
+            className="leading-none"
+            style={{
+              fontFamily:    "'Barlow Condensed', sans-serif",
+              fontWeight:    900,
+              fontSize:      '1.75rem',
+              letterSpacing: '-0.025em',
+              textTransform: 'uppercase',
+              color:         'var(--text-primary)',
+            }}
+          >
+            {title}
+          </h1>
+          {description && (
+            <p
+              className="text-[10px] font-bold uppercase tracking-[0.12em] mt-0.5"
+              style={{ color: 'var(--text-subtle)' }}
+            >
+              {description}
+            </p>
+          )}
+        </div>
+
+        {/* ── Controls ── */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+
+          {/* Date range */}
+          <div className="flex items-center px-3 py-2 rounded-xl"
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+            <DateRangePicker />
+          </div>
+
+          <div className="w-px h-5 mx-1" style={{ background: 'var(--border)' }} />
+
+          <ModeToggle />
+
+          <div className="w-px h-5 mx-1" style={{ background: 'var(--border)' }} />
+
+          {/* Client identity chip */}
+          <div
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+          >
+            <div className="text-right hidden sm:block">
+              <p className="text-xs font-bold leading-none" style={{ color: 'var(--text-primary)' }}>
+                {clientInfo?.name ?? '—'}
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mt-0.5"
+                style={{ color: 'var(--text-muted)' }}>
+                Marketing
+              </p>
+            </div>
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'var(--accent)',
+                boxShadow:  '0 4px 12px rgba(255,77,0,0.38)',
+              }}
+            >
+              <span className="text-xs font-black text-white">
+                {clientInfo?.initial ?? '?'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </header>
+  )
+}

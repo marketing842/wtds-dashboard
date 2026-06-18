@@ -1,0 +1,32 @@
+# ── Dependencies ─────────────────────────
+node_modules/
+**/node_modules/
+
+# ── Environment variables (NEVER commit) ─
+.env
+.env.local
+.env.*
+**/.env
+**/.env.local
+**/.env.*
+
+# ── Next.js build output ──────────────────
+new-frontend/.next/
+new-frontend/out/
+new-frontend/build/
+new-frontend/.vercel/
+new-frontend/next-env.d.ts
+new-frontend/*.tsbuildinfo
+
+# ── Logs ─────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── OS files ─────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Claude Code (local only) ─────────────
+.claude/

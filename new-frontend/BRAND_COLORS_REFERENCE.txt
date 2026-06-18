@@ -1,0 +1,215 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║           WHAT THE *DS - BRAND COLOR & THEME REFERENCE GUIDE              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIMARY BRAND COLORS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+╭─────────────────────────────────────────────────────────────────────────╮
+│ ZWART (Black)                                                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│ HEX:  #0A0A0A                                                           │
+│ RGB:  10, 10, 10                                                        │
+│ USE:  Primary background color in dark mode (html element background)  │
+│ DARK: 100%  LIGHT: Not used (too dark)                                 │
+│                                                                         │
+│ ████████████████████████████████████████████████████████████████████   │
+╰─────────────────────────────────────────────────────────────────────────╯
+
+╭─────────────────────────────────────────────────────────────────────────╮
+│ ORANJE (Orange)                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ HEX:  #FF4D00                                                           │
+│ RGB:  255, 77, 0                                                        │
+│ USE:  Primary accent color - ALL MODE (CTAs, highlights, active states)│
+│ DARK: Primary  LIGHT: Primary                                          │
+│                                                                         │
+│ ██████████████████████████████████████████████████████████████████████ │
+╰─────────────────────────────────────────────────────────────────────────╯
+
+╭─────────────────────────────────────────────────────────────────────────╮
+│ GRAFIET (Charcoal/Dark Gray)                                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ HEX:  #1C1C1C                                                           │
+│ RGB:  28, 28, 28                                                        │
+│ USE:  Card backgrounds in dark mode, secondary surfaces                │
+│ DARK: Primary card bg  LIGHT: Not used                                 │
+│                                                                         │
+│ █████████████████████████████████████████████████████████████████████  │
+╰─────────────────────────────────────────────────────────────────────────╯
+
+╭─────────────────────────────────────────────────────────────────────────╮
+│ WIT (Off-White/White)                                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│ HEX:  #FAFAFA                                                           │
+│ RGB:  250, 250, 250                                                     │
+│ USE:  Primary text color in dark mode, card bg in light mode           │
+│ DARK: Primary text  LIGHT: Secondary/card bg                           │
+│                                                                         │
+│ ██████████████████████████████████████████████████████████████████████ │
+╰─────────────────────────────────────────────────────────────────────────╯
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECONDARY COLORS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GRAY LIGHT:  #BBBBBB  - Muted text, secondary labels, borders
+GRAY MID:    #777777  - Placeholder text, disabled state
+EMERALD:     #55FF55  - Success status indicators
+AMBER:       (Varies) - Warning/paused state indicators
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DARK MODE (PRIMARY) - DEFAULT THEME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Component              │ Color       │ HEX Code  │ RGB Value
+─────────────────────┼─────────────┼───────────┼──────────────
+Page Background      │ Zwart       │ #0A0A0A   │ 10, 10, 10
+Card Background      │ Grafiet     │ #1C1C1C   │ 28, 28, 28
+Primary Text         │ Wit         │ #FAFAFA   │ 250, 250, 250
+Secondary Text       │ Gray Light  │ #BBBBBB   │ 187, 187, 187
+Muted Text          │ Gray Mid    │ #777777   │ 119, 119, 119
+Primary Accent      │ Oranje      │ #FF4D00   │ 255, 77, 0
+Border (subtle)     │ Transparent │ rgba(...) │ White 8%
+Border (default)    │ Transparent │ rgba(...) │ White 14%
+Success Status      │ Emerald     │ #55FF55   │ 85, 255, 85
+Warning Status      │ Oranje/Amber│ #FF4D00   │ 255, 77, 0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIGHT MODE (SECONDARY) - ALTERNATIVE THEME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Component              │ Color       │ HEX Code  │ RGB Value
+─────────────────────┼─────────────┼───────────┼──────────────
+Page Background      │ Wit         │ #FAFAFA   │ 250, 250, 250
+Card Background      │ White       │ #FFFFFF   │ 255, 255, 255
+Primary Text         │ Zwart       │ #0A0A0A   │ 10, 10, 10
+Secondary Text       │ Gray Dark   │ #555555   │ 85, 85, 85
+Muted Text          │ Gray Mid    │ #999999   │ 153, 153, 153
+Primary Accent      │ Oranje      │ #FF4D00   │ 255, 77, 0
+Border (subtle)     │ Transparent │ rgba(...) │ Black 8%
+Border (default)    │ Transparent │ rgba(...) │ Black 14%
+Success Status      │ Emerald     │ #55FF55   │ 85, 255, 85
+Warning Status      │ Oranje/Amber│ #FF4D00   │ 255, 77, 0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TYPOGRAPHY COLORS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DARK MODE
+─────────────────────────────────────────────────────────────────────────
+H1 / H2 / H3 / H4    │ Wit (#FAFAFA) - Off-white, maximum contrast
+Body Text            │ Wit (#FAFAFA) - Clean, readable
+Labels              │ Gray Light (#BBBBBB) - Subtle, secondary
+Stat Values         │ Oranje (#FF4D00) - Emphasis, call-to-action
+
+LIGHT MODE
+─────────────────────────────────────────────────────────────────────────
+H1 / H2 / H3 / H4    │ Zwart (#0A0A0A) - Pure black, maximum contrast
+Body Text            │ Zwart (#0A0A0A) - Clean, readable
+Labels              │ Gray Mid (#777777) - Subtle, secondary
+Stat Values         │ Oranje (#FF4D00) - Emphasis, call-to-action
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPONENT SPECIFIC COLORS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PRIMARY BUTTON
+   Dark:  Background: #FF4D00, Text: White, Hover: #E54200
+   Light: Background: #FF4D00, Text: White, Hover: #E54200
+   
+SECONDARY BUTTON  
+   Dark:  Border: #555555, Text: #FAFAFA, Hover: #FF4D00
+   Light: Border: #CCCCCC, Text: #0A0A0A, Hover: #FF4D00
+
+CARD ACCENT STRIPE
+   Dark:  Border-top: 4px #FF4D00 (orange top border)
+   Light: Border-top: 4px #FF4D00 (orange top border)
+
+STAT CARD VALUE
+   Both:  Color: #FF4D00 (always orange for emphasis)
+
+ACTIVE NAVIGATION
+   Dark:  Text: #FF4D00, Border-left: 4px #FF4D00
+   Light: Text: #FF4D00, Border-left: 4px #FF4D00
+
+STATUS INDICATORS
+   Active:    #55FF55 (Emerald green)
+   Paused:    #FF4D00 (Orange)
+   Completed: #777777 (Gray)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+USAGE GUIDELINES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ USE ORANGE (#FF4D00) FOR:
+  • Primary call-to-action buttons
+  • Active/highlighted navigation items
+  • Important metric highlights in cards
+  • Stat value numbers
+  • Warning/alert states
+  • Top accent stripe on important cards
+  • Link hover states
+
+✓ USE DARK/BLACK (#0A0A0A or #1C1C1C) FOR:
+  • Page backgrounds (Zwart)
+  • Card backgrounds (Grafiet)
+  • Text on light backgrounds
+  • Navigation area backgrounds
+  • Sidebar backgrounds
+
+✓ USE WHITE/LIGHT (#FAFAFA or #FFFFFF) FOR:
+  • Text on dark backgrounds
+  • Card backgrounds in light mode
+  • Maximum contrast for readability
+  • Primary text color in dark mode
+
+✓ USE GRAYS FOR:
+  • Secondary/muted text
+  • Borders (with transparency)
+  • Disabled states
+  • Placeholder text
+  • Icons (unless they're active/important)
+
+✓ MAINTAIN CONTRAST:
+  • Dark text on light background: ✓ High contrast
+  • Light text on dark background: ✓ High contrast
+  • Orange on dark: ✓ High contrast (255 vs 10)
+  • Orange on light: ✓ High contrast (255 vs 250)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CSS IMPLEMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In globals.css:
+
+:root {
+  --color-zwart: #0A0A0A;
+  --color-oranje: #FF4D00;
+  --color-grafiet: #1C1C1C;
+  --color-wit: #FAFAFA;
+}
+
+Dark Mode (applied via .dark class):
+  Background: #0A0A0A
+  Cards:      #1C1C1C
+  Text:       #FAFAFA
+  Accents:    #FF4D00
+  Borders:    rgba(255, 255, 255, 0.08-0.14)
+
+Light Mode (default):
+  Background: #FAFAFA
+  Cards:      #FFFFFF
+  Text:       #0A0A0A
+  Accents:    #FF4D00
+  Borders:    rgba(0, 0, 0, 0.08-0.14)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REFERENCE CREATED: June 11, 2025
+BRAND: What The *DS
+THEME SYSTEM: Dual mode (dark default, light alternative)
+STATUS: Ready for implementation
+
+╚════════════════════════════════════════════════════════════════════════════╝
