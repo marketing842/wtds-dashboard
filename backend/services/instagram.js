@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE = 'https://graph.facebook.com/v20.0';
+const BASE = 'https://graph.facebook.com/v22.0';
 
 // Per-client IG user ID cache
 const _igCache = new Map();
