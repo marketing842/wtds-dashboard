@@ -4,7 +4,7 @@ import { DateRangePicker } from '@/components/DateRangePicker'
 import { ModeToggle } from '@/components/ModeToggle'
 import { useClientInfo } from '@/lib/client-context'
 
-export function Header({ title, description }: { title: string; description?: string }) {
+export function Header({ title, description, showDatePicker = true }: { title: string; description?: string; showDatePicker?: boolean }) {
   const clientInfo = useClientInfo()
 
   return (
@@ -46,11 +46,13 @@ export function Header({ title, description }: { title: string; description?: st
         {/* ── Controls ── */}
         <div className="flex items-center gap-2 flex-shrink-0">
 
-          {/* Date range */}
+          {/* Date range — hidden on pages where it doesn't apply */}
+          {showDatePicker && (
           <div className="flex items-center px-3 py-2 rounded-xl"
             style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
             <DateRangePicker />
           </div>
+          )}
 
           <div className="w-px h-5 mx-1" style={{ background: 'var(--border)' }} />
 

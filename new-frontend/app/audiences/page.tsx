@@ -53,7 +53,7 @@ export default function AudiencesPage() {
       <Sidebar />
 
       <div className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <Header title="Audiences" description="Klaviyo lists & segments" />
+        <Header title="Audiences" description="Klaviyo lists & segments" showDatePicker={false} />
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-8">
@@ -67,12 +67,19 @@ export default function AudiencesPage() {
 
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-700 dark:text-red-300 text-sm mb-8">
-                {error} — Is the backend running on port 3000?
+                {error}
               </div>
             )}
 
             {!loading && !error && (
               <>
+                {/* Note — list sizes are always current */}
+                <div className="flex items-center gap-2 mb-5 px-3 py-2 rounded-lg text-xs text-muted-foreground"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <span className="text-accent font-bold">ℹ</span>
+                  Audience sizes tonen de actuele stand en worden niet beïnvloed door de datumselectie.
+                </div>
+
                 {/* Summary cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="stat-card flex items-center justify-between">
