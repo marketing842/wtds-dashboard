@@ -6,6 +6,8 @@ import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
 import { useDateRange } from '@/lib/date-range-context'
 import { Mail, MousePointerClick, CheckCircle, TrendingUp, Loader2 } from 'lucide-react'
+import { AnimatedNumber } from '@/components/AnimatedNumber'
+import { DateRangeLabel } from '@/components/DateRangeLabel'
 
 import { apiFetch } from '@/lib/api'
 
@@ -120,25 +122,25 @@ export default function EmailPage() {
   const stats = cur ? [
     {
       label: 'Delivered',
-      value: cur.delivered.toLocaleString(),
+      value: <AnimatedNumber value={cur.delivered} delay={0}   formatter={n => Math.round(n).toLocaleString('nl-NL')} />,
       change: pctChange(cur.delivered, prev?.delivered),
       icon: Mail,
     },
     {
       label: 'Open Rate',
-      value: `${fmt(cur.open_rate)}%`,
+      value: <AnimatedNumber value={cur.open_rate} delay={100} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />,
       change: prev ? pctChange(cur.open_rate, prev.open_rate) : null,
       icon: CheckCircle,
     },
     {
       label: 'Click Rate',
-      value: `${fmt(cur.click_rate)}%`,
+      value: <AnimatedNumber value={cur.click_rate} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />,
       change: prev ? pctChange(cur.click_rate, prev.click_rate) : null,
       icon: MousePointerClick,
     },
     {
       label: 'Click-to-Open',
-      value: `${fmt(cur.ctor)}%`,
+      value: <AnimatedNumber value={cur.ctor} delay={300} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />,
       change: prev ? pctChange(cur.ctor, prev.ctor) : null,
       icon: TrendingUp,
     },
@@ -178,13 +180,14 @@ export default function EmailPage() {
               <>
                 {/* KPI cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  {stats.map(s => (
+                  {stats.map((s, i) => (
                     <StatCard
                       key={s.label}
                       label={s.label}
                       value={s.value}
                       change={s.change !== null ? { value: Math.abs(s.change), isPositive: s.change >= 0 } : undefined}
                       icon={s.icon}
+                      delay={i * 100}
                     />
                   ))}
                 </div>
@@ -228,7 +231,7 @@ export default function EmailPage() {
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold text-foreground">Active Flows</h2>
                     <p className="text-muted-foreground text-sm mt-1">
-                      {startDate} – {endDate}
+                      <DateRangeLabel start={startDate} end={endDate} />
                     </p>
                   </div>
 

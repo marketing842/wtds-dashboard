@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
+import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { useDateRange } from '@/lib/date-range-context'
 import { Euro, Target, Eye, Loader2 } from 'lucide-react'
 import {
@@ -236,27 +237,27 @@ export default function OverviewPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                       <StatCard
                         label="Total Spend"
-                        value={fmtEur(totalSpend)}
+                        value={<AnimatedNumber value={totalSpend} delay={0}   formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />}
                         change={pctChg(totalSpend, prevTotalSpend) != null ? { value: Math.abs(pctChg(totalSpend, prevTotalSpend)!), isPositive: pctChg(totalSpend, prevTotalSpend)! <= 0 } : undefined}
-                        icon={Euro}
+                        icon={Euro} delay={0}
                       />
                       <StatCard
                         label="Total Leads"
-                        value={fmt(totalLeads, 0)}
+                        value={<AnimatedNumber value={totalLeads} delay={100} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                         change={pctChg(totalLeads, prevTotalLeads) != null ? { value: Math.abs(pctChg(totalLeads, prevTotalLeads)!), isPositive: pctChg(totalLeads, prevTotalLeads)! >= 0 } : undefined}
-                        icon={Target}
+                        icon={Target} delay={100}
                       />
                       <StatCard
                         label="Avg CPL"
-                        value={avgCpl !== null ? fmtEur(avgCpl) : '—'}
+                        value={avgCpl !== null ? <AnimatedNumber value={avgCpl} delay={200} formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} /> : '—'}
                         change={avgCpl !== null && prevAvgCpl !== null && pctChg(avgCpl, prevAvgCpl) != null ? { value: Math.abs(pctChg(avgCpl, prevAvgCpl)!), isPositive: pctChg(avgCpl, prevAvgCpl)! <= 0 } : undefined}
-                        icon={Target}
+                        icon={Target} delay={200}
                       />
                       <StatCard
                         label="Total Impressions"
-                        value={totalImpressions >= 1000 ? `${fmt(totalImpressions / 1000)}K` : fmt(totalImpressions, 0)}
+                        value={<AnimatedNumber value={totalImpressions} delay={300} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                         change={pctChg(totalImpressions, prevTotalImpressions) != null ? { value: Math.abs(pctChg(totalImpressions, prevTotalImpressions)!), isPositive: pctChg(totalImpressions, prevTotalImpressions)! >= 0 } : undefined}
-                        icon={Eye}
+                        icon={Eye} delay={300}
                       />
                     </div>
 

@@ -8,6 +8,7 @@ import { useDateRange } from '@/lib/date-range-context'
 import { MousePointerClick, Eye, Euro, Target, Loader2, RefreshCw } from 'lucide-react'
 
 import { apiFetch } from '@/lib/api'
+import { DateRangeLabel } from '@/components/DateRangeLabel'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -183,7 +184,7 @@ export default function CampaignsPage() {
                 <div className="mb-8">
                   <div className="mb-4">
                     <p className="text-foreground font-bold text-lg">Top Keywords</p>
-                    <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate} · top 10 by clicks</p>
+                    <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · top 10 by clicks</p>
                   </div>
 
                   {kwLoading && (
@@ -252,7 +253,7 @@ export default function CampaignsPage() {
                 <div className="mb-6">
                   <div className="mb-4">
                     <p className="text-foreground font-bold text-lg">Active Campaigns</p>
-                    <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate} · {active.length} active{pausedCount > 0 ? `, ${pausedCount} paused` : ''}</p>
+                    <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · {active.length} active{pausedCount > 0 ? `, ${pausedCount} paused` : ''}</p>
                   </div>
 
                   <div className="space-y-4">

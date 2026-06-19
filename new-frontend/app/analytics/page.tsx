@@ -7,6 +7,7 @@ import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
 import { useDateRange } from '@/lib/date-range-context'
 import { Users, TrendingUp, Eye, Loader2 } from 'lucide-react'
+import { DateRangeLabel } from '@/components/DateRangeLabel'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
@@ -163,7 +164,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="mb-4">
                       <p className="text-foreground font-bold text-lg">Traffic Sources</p>
-                      <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate}</p>
+                      <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /></p>
                     </div>
                     <div className="stat-card">
                       <ResponsiveContainer width="100%" height={260}>
@@ -191,7 +192,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="mb-4">
                       <p className="text-foreground font-bold text-lg">Top Pages</p>
-                      <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate}</p>
+                      <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /></p>
                     </div>
                     <div className="stat-card p-0 overflow-hidden">
                       <table className="w-full text-sm">

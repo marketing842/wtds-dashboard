@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
+import { AnimatedNumber } from '@/components/AnimatedNumber'
+import { DateRangeLabel } from '@/components/DateRangeLabel'
 import { useDateRange } from '@/lib/date-range-context'
 import { Eye, MousePointerClick, Euro, TrendingUp, Loader2, ShoppingCart, Play, Film } from 'lucide-react'
 
@@ -113,30 +115,30 @@ export default function MetaPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                   <StatCard
                     label="Impressions"
-                    value={cur.impressions >= 1000 ? `${fmt(cur.impressions / 1000)}K` : fmt(cur.impressions, 0)}
+                    value={<AnimatedNumber value={cur.impressions} delay={0}   formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
-                    icon={Eye}
+                    icon={Eye} delay={0}
                   />
                   <StatCard
                     label="Clicks"
-                    value={fmt(cur.clicks, 0)}
+                    value={<AnimatedNumber value={cur.clicks} delay={100} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
-                    icon={MousePointerClick}
+                    icon={MousePointerClick} delay={100}
                   />
                   <StatCard
                     label="Ad Spend"
-                    value={fmtEur(cur.spend)}
+                    value={<AnimatedNumber value={cur.spend} delay={200} formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />}
                     change={pctChg(cur.spend, prev?.spend) != null ? { value: Math.abs(pctChg(cur.spend, prev?.spend)!), isPositive: pctChg(cur.spend, prev?.spend)! <= 0 } : undefined}
-                    icon={Euro}
+                    icon={Euro} delay={200}
                   />
                   <StatCard
                     label={cur.leads > 0 ? 'Leads' : 'Purchases'}
-                    value={fmt(cur.leads > 0 ? cur.leads : cur.purchases, 0)}
+                    value={<AnimatedNumber value={cur.leads > 0 ? cur.leads : cur.purchases} delay={300} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                     change={(() => {
                       const v = cur.leads > 0 ? pctChg(cur.leads, prev?.leads) : pctChg(cur.purchases, prev?.purchases)
                       return v != null ? { value: Math.abs(v), isPositive: v >= 0 } : undefined
                     })()}
-                    icon={ShoppingCart}
+                    icon={ShoppingCart} delay={300}
                   />
                 </div>
 
@@ -247,7 +249,7 @@ export default function MetaPage() {
                   <div className="mb-4">
                     <p className="text-foreground font-bold text-lg">Campaigns</p>
                     <p className="text-muted-foreground text-sm mt-1">
-                      {startDate} – {endDate} · {active.length} active{inactive.length > 0 ? `, ${inactive.length} inactive` : ''}
+                      <DateRangeLabel start={startDate} end={endDate} /> · {active.length} active{inactive.length > 0 ? `, ${inactive.length} inactive` : ''}
                     </p>
                   </div>
 

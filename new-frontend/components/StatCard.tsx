@@ -1,17 +1,20 @@
 import { LucideIcon } from 'lucide-react'
+import { ReactNode } from 'react'
 
 interface StatCardProps {
   label:   string
-  value:   string | number
+  value:   ReactNode
   change?: { value: number; isPositive: boolean }
   icon:    LucideIcon
+  delay?:  number
 }
 
-export function StatCard({ label, value, change, icon: Icon }: StatCardProps) {
+export function StatCard({ label, value, change, icon: Icon, delay = 0 }: StatCardProps) {
   const isUp = change?.isPositive === true
 
   return (
-    <div className="stat-card group relative overflow-hidden fade-in-up">
+    <div className="stat-card group relative overflow-hidden fade-in-up"
+         style={{ animationDelay: `${delay}ms` }}>
 
       {/* Subtle top-left glow orb */}
       <div

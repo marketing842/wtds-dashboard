@@ -11,6 +11,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import { apiFetch } from '@/lib/api'
+import type { ReactNode } from 'react'
+import { AnimatedNumber } from '@/components/AnimatedNumber'
+import { DateRangeLabel } from '@/components/DateRangeLabel'
 
 function fmt(n: number, decimals = 0) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -62,20 +65,20 @@ function toChartData(posts: any[], startDate: string, endDate: string) {
   return [...groups.values()].sort((a, b) => a.sortKey < b.sortKey ? -1 : 1)
 }
 
-function KpiCard({ label, value, sub, icon: Icon, accent = false }: {
-  label: string; value: string; sub?: string; icon?: any; accent?: boolean
+function KpiCard({ label, value, sub, icon: Icon, accent = false, delay = 0 }: {
+  label: string; value: ReactNode; sub?: ReactNode; icon?: any; accent?: boolean; delay?: number
 }) {
   return (
-    <div className="stat-card flex flex-col gap-2">
+    <div className="stat-card flex flex-col gap-2 fade-in-up" style={{ animationDelay: `${delay}ms` }}>
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">{label}</p>
         {Icon && (
-          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center transition-transform duration-300 hover:scale-110">
             <Icon className="w-4 h-4 text-accent" />
           </div>
         )}
       </div>
-      <p className={`text-3xl font-bold ${accent ? 'text-accent' : 'text-foreground'}`}>{value}</p>
+      <p className={`text-3xl font-bold number-reveal ${accent ? 'text-accent' : 'text-foreground'}`}>{value}</p>
       {sub && <p className="text-muted-foreground text-xs">{sub}</p>}
     </div>
   )
@@ -190,38 +193,36 @@ export default function MetaOrganischPage() {
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                   <KpiCard
                     label="Posts Deze Periode"
-                    value={String(posts.length)}
-                    sub={`${startDate} – ${endDate}`}
-                    icon={Camera}
+                    value={<AnimatedNumber value={posts.length} delay={0} formatter={n => String(Math.round(n))} />}
+                    sub={<DateRangeLabel start={startDate} end={endDate} />}
+                    icon={Camera} delay={0}
                   />
                   <KpiCard
                     label="Bereik"
-                    value={fmtK(reach)}
+                    value={<AnimatedNumber value={reach} delay={100} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     sub="unieke accounts bereikt"
-                    icon={Eye}
-                    accent
+                    icon={Eye} accent delay={100}
                   />
                   <KpiCard
                     label="Engagement Rate"
-                    value={`${fmt(engagementRate, 1)}%`}
+                    value={<AnimatedNumber value={engagementRate} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />}
                     sub="likes + comments + shares + saves"
-                    icon={TrendingUp}
-                    accent
+                    icon={TrendingUp} accent delay={200}
                   />
                   <KpiCard
                     label="Likes"
-                    value={fmt(totalLikes)}
-                    icon={Heart}
+                    value={<AnimatedNumber value={totalLikes} delay={300} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
+                    icon={Heart} delay={300}
                   />
                   <KpiCard
                     label="Reacties"
-                    value={fmt(totalComments)}
-                    icon={MessageCircle}
+                    value={<AnimatedNumber value={totalComments} delay={400} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
+                    icon={MessageCircle} delay={400}
                   />
-                  {totalShares > 0 && <KpiCard label="Shares" value={fmt(totalShares)} icon={Share2} />}
-                  {totalShares === 0 && totalSaved > 0 && <KpiCard label="Opgeslagen" value={fmt(totalSaved)} icon={Bookmark} />}
+                  {totalShares > 0 && <KpiCard label="Shares" value={<AnimatedNumber value={totalShares} delay={500} formatter={n => Math.round(n).toLocaleString('nl-NL')} />} icon={Share2} delay={500} />}
+                  {totalShares === 0 && totalSaved > 0 && <KpiCard label="Opgeslagen" value={<AnimatedNumber value={totalSaved} delay={500} formatter={n => Math.round(n).toLocaleString('nl-NL')} />} icon={Bookmark} delay={500} />}
                   {totalShares === 0 && totalSaved === 0 && summary.profile_views > 0 && (
-                    <KpiCard label="Profielbezoeken" value={fmtK(summary.profile_views)} icon={Users} />
+                    <KpiCard label="Profielbezoeken" value={<AnimatedNumber value={summary.profile_views} delay={500} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />} icon={Users} delay={500} />
                   )}
                 </div>
 
@@ -294,7 +295,7 @@ export default function MetaOrganischPage() {
                 <div>
                   <div className="mb-4">
                     <p className="text-foreground font-bold text-xl">Posts in Periode</p>
-                    <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate} · {posts.length} post{posts.length !== 1 ? 's' : ''}</p>
+                    <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · {posts.length} post{posts.length !== 1 ? 's' : ''}</p>
                   </div>
 
                   {posts.length === 0 ? (

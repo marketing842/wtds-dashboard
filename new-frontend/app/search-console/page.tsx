@@ -8,6 +8,8 @@ import { useDateRange } from '@/lib/date-range-context'
 import { MousePointerClick, Eye, TrendingUp, Search, Loader2 } from 'lucide-react'
 
 import { apiFetch } from '@/lib/api'
+import { AnimatedNumber } from '@/components/AnimatedNumber'
+import { DateRangeLabel } from '@/components/DateRangeLabel'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -117,27 +119,27 @@ export default function SearchConsolePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                   <StatCard
                     label="Clicks"
-                    value={cur.clicks >= 1000 ? `${fmt(cur.clicks / 1000)}K` : fmt(cur.clicks, 0)}
+                    value={<AnimatedNumber value={cur.clicks} delay={0}   formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
-                    icon={MousePointerClick}
+                    icon={MousePointerClick} delay={0}
                   />
                   <StatCard
                     label="Impressions"
-                    value={cur.impressions >= 1000 ? `${fmt(cur.impressions / 1000)}K` : fmt(cur.impressions, 0)}
+                    value={<AnimatedNumber value={cur.impressions} delay={100} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
-                    icon={Eye}
+                    icon={Eye} delay={100}
                   />
                   <StatCard
                     label="Avg. CTR"
-                    value={`${fmt(cur.ctr)}%`}
+                    value={<AnimatedNumber value={cur.ctr} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />}
                     change={pctChg(cur.ctr, prev?.ctr) != null ? { value: Math.abs(pctChg(cur.ctr, prev?.ctr)!), isPositive: pctChg(cur.ctr, prev?.ctr)! >= 0 } : undefined}
-                    icon={TrendingUp}
+                    icon={TrendingUp} delay={200}
                   />
                   <StatCard
                     label="Avg. Position"
-                    value={fmt(cur.position)}
+                    value={<AnimatedNumber value={cur.position} delay={300} formatter={n => n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })} />}
                     change={pctChg(cur.position, prev?.position) != null ? { value: Math.abs(pctChg(cur.position, prev?.position)!), isPositive: pctChg(cur.position, prev?.position)! <= 0 } : undefined}
-                    icon={Search}
+                    icon={Search} delay={300}
                   />
                 </div>
 
@@ -146,7 +148,7 @@ export default function SearchConsolePage() {
                   <div>
                     <div className="mb-4">
                       <p className="text-foreground font-bold text-lg">Top Search Queries</p>
-                      <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate} · <span style={{ color: '#22C55E' }}>🥇 top 3</span> · <span style={{ color: '#EAB308' }}>✦ top 10</span> · positie (lager = beter)</p>
+                      <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · <span style={{ color: '#22C55E' }}>🥇 top 3</span> · <span style={{ color: '#EAB308' }}>✦ top 10</span> · positie (lager = beter)</p>
                     </div>
 
                     <div className="stat-card p-0 overflow-hidden">
@@ -164,7 +166,8 @@ export default function SearchConsolePage() {
                           {queries.length === 0 ? (
                             <tr><td colSpan={5} className="text-center text-sm py-10" style={{ color: 'var(--text-subtle)' }}>No search queries found for this period.</td></tr>
                           ) : queries.map((q, i) => (
-                            <tr key={i} className="border-b border-[var(--border)] last:border-0 transition-colors" style={{ cursor: 'default' }}
+                            <tr key={i} className="border-b border-[var(--border)] last:border-0 transition-colors fade-in-up"
+                              style={{ cursor: 'default', animationDelay: `${i * 50}ms` }}
                               onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
                               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                             >
@@ -189,7 +192,7 @@ export default function SearchConsolePage() {
                   <div>
                     <div className="mb-4">
                       <p className="text-foreground font-bold text-lg">Top Pages</p>
-                      <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate}</p>
+                      <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /></p>
                     </div>
 
                     <div className="stat-card p-0 overflow-hidden">
@@ -206,7 +209,8 @@ export default function SearchConsolePage() {
                           {pages.length === 0 ? (
                             <tr><td colSpan={4} className="text-center text-sm py-10" style={{ color: 'var(--text-subtle)' }}>No page data found for this period.</td></tr>
                           ) : pages.map((p, i) => (
-                            <tr key={i} className="border-b border-[var(--border)] last:border-0 transition-colors" style={{ cursor: 'default' }}
+                            <tr key={i} className="border-b border-[var(--border)] last:border-0 transition-colors fade-in-up"
+                              style={{ cursor: 'default', animationDelay: `${i * 50}ms` }}
                               onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
                               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                             >
