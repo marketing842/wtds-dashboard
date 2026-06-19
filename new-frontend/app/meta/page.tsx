@@ -126,9 +126,12 @@ export default function MetaPage() {
                     icon={Euro}
                   />
                   <StatCard
-                    label="Purchases"
-                    value={fmt(cur.purchases, 0)}
-                    change={pctChg(cur.purchases, prev?.purchases) != null ? { value: Math.abs(pctChg(cur.purchases, prev?.purchases)!), isPositive: pctChg(cur.purchases, prev?.purchases)! >= 0 } : undefined}
+                    label={cur.leads > 0 ? 'Leads' : 'Purchases'}
+                    value={fmt(cur.leads > 0 ? cur.leads : cur.purchases, 0)}
+                    change={(() => {
+                      const v = cur.leads > 0 ? pctChg(cur.leads, prev?.leads) : pctChg(cur.purchases, prev?.purchases)
+                      return v != null ? { value: Math.abs(v), isPositive: v >= 0 } : undefined
+                    })()}
                     icon={ShoppingCart}
                   />
                 </div>
@@ -192,8 +195,8 @@ export default function MetaPage() {
                               </p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground text-xs mb-0.5">Purchases</p>
-                              <p className="text-foreground text-sm font-bold">{ad.purchases}</p>
+                              <p className="text-muted-foreground text-xs mb-0.5">{ad.leads > 0 ? 'Leads' : 'Purchases'}</p>
+                              <p className="text-foreground text-sm font-bold">{ad.leads > 0 ? ad.leads : ad.purchases}</p>
                             </div>
                             {ad.thumbstop_rate != null && (
                               <div>
@@ -258,7 +261,7 @@ export default function MetaPage() {
                               { label: 'Clicks', value: fmt(c.clicks, 0) },
                               { label: 'CTR', value: `${fmt(c.ctr)}%` },
                               { label: 'Spend', value: fmtEur(c.spend) },
-                              { label: 'Purchases', value: String(c.purchases) },
+                              { label: c.leads > 0 ? 'Leads' : 'Purchases', value: String(c.leads > 0 ? c.leads : c.purchases) },
                               { label: 'ROAS', value: c.roas > 0 ? `${fmt(c.roas)}x` : '—', accent: true },
                             ].map(m => (
                               <div key={m.label}>

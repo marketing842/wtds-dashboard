@@ -13,6 +13,10 @@ function mapInsights(ins) {
   const spend = parseNum(ins.spend);
   const purchases = extractActions(ins.actions, 'purchase') || extractActions(ins.actions, 'offsite_conversion.fb_pixel_purchase');
   const purchaseValue = extractActions(ins.action_values, 'purchase') || extractActions(ins.action_values, 'offsite_conversion.fb_pixel_purchase');
+  // Lead action types: pixel Lead event, instant form, or offsite pixel lead
+  const leads = extractActions(ins.actions, 'lead')
+    || extractActions(ins.actions, 'onsite_conversion.lead_grouped')
+    || extractActions(ins.actions, 'offsite_conversion.fb_pixel_lead');
   return {
     impressions: parseInt2(ins.impressions),
     clicks: parseInt2(ins.clicks),
@@ -21,6 +25,7 @@ function mapInsights(ins) {
     cpc: parseNum(ins.cpc),
     ctr: parseNum(ins.ctr),
     purchases,
+    leads,
     purchase_value: purchaseValue,
     roas: spend > 0 ? purchaseValue / spend : 0,
   };
@@ -62,6 +67,7 @@ export async function getMetaAdCreatives(start, end, creds) {
       const avgWatchMs  = parseNum(ins.video_avg_time_watched_actions?.[0]?.value);
       const purchases   = extractActions(ins.actions, 'purchase') || extractActions(ins.actions, 'offsite_conversion.fb_pixel_purchase');
       const purchaseVal = extractActions(ins.action_values, 'purchase') || extractActions(ins.action_values, 'offsite_conversion.fb_pixel_purchase');
+      const leads       = extractActions(ins.actions, 'lead') || extractActions(ins.actions, 'onsite_conversion.lead_grouped') || extractActions(ins.actions, 'offsite_conversion.fb_pixel_lead');
 
       return {
         id: ad.id,
@@ -72,6 +78,7 @@ export async function getMetaAdCreatives(start, end, creds) {
         spend,
         ctr: parseNum(ins.ctr),
         purchases,
+        leads,
         roas: spend > 0 ? purchaseVal / spend : 0,
         is_video: videoPlays > 0,
         thumbstop_rate: impressions > 0 && videoPlays > 0 ? (videoPlays / impressions) * 100 : null,

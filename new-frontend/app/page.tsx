@@ -120,8 +120,9 @@ export default function OverviewPage() {
 
   const totalSpend = (gAds?.cost ?? 0) + (meta?.spend ?? 0)
   const prevTotalSpend = (gAdsPrev?.cost ?? 0) + (metaPrev?.spend ?? 0)
-  const totalLeads = (gAds?.conversions ?? 0) + (meta?.purchases ?? 0)
-  const prevTotalLeads = (gAdsPrev?.conversions ?? 0) + (metaPrev?.purchases ?? 0)
+  const metaLeads = (m: any) => (m?.leads ?? 0) || (m?.purchases ?? 0)
+  const totalLeads = (gAds?.conversions ?? 0) + metaLeads(meta)
+  const prevTotalLeads = (gAdsPrev?.conversions ?? 0) + metaLeads(metaPrev)
   const avgCpl = totalLeads > 0 ? totalSpend / totalLeads : null
   const prevAvgCpl = prevTotalLeads > 0 ? prevTotalSpend / prevTotalLeads : null
   const totalImpressions = (gAds?.impressions ?? 0) + (meta?.impressions ?? 0)
@@ -134,7 +135,7 @@ export default function OverviewPage() {
 
   const leadsChartData = [
     { channel: 'Google Ads', leads: gAds?.conversions ?? 0 },
-    { channel: 'Meta Ads', leads: meta?.purchases ?? 0 },
+    { channel: 'Meta Ads', leads: metaLeads(meta) },
   ]
 
   const totalSpendForPie = (gAds?.cost ?? 0) + (meta?.spend ?? 0)
