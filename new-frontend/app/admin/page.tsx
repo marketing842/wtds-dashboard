@@ -80,35 +80,73 @@ export default function AdminOverviewPage() {
             <Link
               key={c.id}
               href={`/admin/clients/${c.id}`}
-              className="stat-card group flex items-center gap-4 hover:no-underline fade-in-up"
-              style={{ animationDelay: `${idx * 60}ms` }}
+              className="group hover:no-underline fade-in-up block rounded-xl overflow-hidden transition-all duration-200"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                animationDelay: `${idx * 60}ms`,
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent-border)'
+                ;(e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px rgba(255,77,0,0.1)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'
+                ;(e.currentTarget as HTMLElement).style.boxShadow = 'none'
+              }}
             >
-              {/* Avatar */}
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black text-white flex-shrink-0 accent-glow"
-                style={{ background: 'var(--accent)' }}
-              >
-                {c.initial}
-              </div>
+              {/* Top accent strip */}
+              <div className="h-0.5 w-full transition-all duration-200"
+                style={{ background: 'linear-gradient(90deg, var(--accent), transparent)' }} />
 
-              {/* Info */}
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-base truncate" style={{ color: 'var(--text-primary)' }}>
-                  {c.name}
-                </p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <Calendar className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--text-subtle)' }} />
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Added {new Date(c.created_at).toLocaleDateString('nl-NL')}
-                  </p>
+              <div className="p-4 flex items-center gap-4">
+                {/* Avatar with status dot */}
+                <div className="relative flex-shrink-0">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black text-white accent-glow"
+                    style={{ background: 'var(--accent)' }}
+                  >
+                    {c.initial}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
+                    style={{ background: '#22c55e', borderColor: 'var(--surface)' }} />
                 </div>
-              </div>
 
-              {/* Hover CTA */}
-              <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                <div className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg"
-                  style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
-                  Edit <ChevronRight className="w-3.5 h-3.5" />
+                {/* Info */}
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-base leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
+                    {c.name}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full"
+                      style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
+                      Active
+                    </span>
+                    <span className="text-[11px]" style={{ color: 'var(--text-subtle)' }}>·</span>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--text-subtle)' }} />
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {new Date(c.created_at).toLocaleDateString('nl-NL')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CTA arrow */}
+                <div className="flex-shrink-0 transition-transform duration-150 group-hover:translate-x-0.5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150"
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.background = 'var(--accent-soft)'
+                      ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--accent-border)'
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.background = 'var(--bg)'
+                      ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'
+                    }}
+                  >
+                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                  </div>
                 </div>
               </div>
             </Link>

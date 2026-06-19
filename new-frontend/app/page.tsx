@@ -397,10 +397,11 @@ export default function OverviewPage() {
                             <XAxis dataKey="channel" tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
                             <Tooltip
-                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 8 }}
-                              labelStyle={{ color: tooltipText, fontSize: 12, fontWeight: 600 }}
-                              itemStyle={{ color: '#10B981', fontSize: 12 }}
+                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                              labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                              itemStyle={{ color: tooltipText, fontSize: 12 }}
                               formatter={(v: number) => [fmt(v, 0), 'Leads']}
+                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
                             />
                             <Bar dataKey="leads" fill="#10B981" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
                           </BarChart>
@@ -428,8 +429,9 @@ export default function OverviewPage() {
                                 ))}
                               </Pie>
                               <Tooltip
-                                contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 8 }}
-                                labelStyle={{ color: tooltipText }}
+                                contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                                labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                                itemStyle={{ color: tooltipText, fontSize: 12 }}
                                 formatter={(v: number) => [fmtEur(v), 'Spend']}
                               />
                             </PieChart>
@@ -475,10 +477,11 @@ export default function OverviewPage() {
                             <XAxis dataKey="channel" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${fmt(v)}%`} />
                             <Tooltip
-                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 8 }}
-                              labelStyle={{ color: tooltipText, fontSize: 12, fontWeight: 600 }}
-                              itemStyle={{ color: '#8B5CF6', fontSize: 12 }}
+                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                              labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                              itemStyle={{ color: tooltipText, fontSize: 12 }}
                               formatter={(v: number) => [`${fmt(v)}%`, 'CTR']}
+                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
                             />
                             <Bar dataKey="ctr" fill="#8B5CF6" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
                           </BarChart>

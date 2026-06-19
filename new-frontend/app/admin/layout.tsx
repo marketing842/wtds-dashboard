@@ -102,25 +102,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Admin identity card */}
         <div className="relative z-10 px-4 pt-4 pb-3">
-          <div className="flex items-center gap-3 px-3 py-3 rounded-xl"
+          <div className="rounded-xl overflow-hidden"
             style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 accent-glow"
-              style={{ background: 'var(--accent)' }}
-            >
-              <ShieldCheck className="w-4.5 h-4.5 text-white" style={{ width: 18, height: 18 }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold leading-none" style={{ color: 'var(--text-primary)' }}>
-                {t('admin.admin')}
-              </p>
-              <div className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 rounded-md"
-                style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }}>
-                <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'var(--accent)' }} />
-                <span className="text-[9px] font-bold uppercase tracking-[0.12em]"
-                  style={{ color: 'var(--accent)' }}>
-                  {t('admin.agencyPanel')}
-                </span>
+            {/* Accent strip */}
+            <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--accent), transparent)' }} />
+            <div className="flex items-center gap-3 px-3 py-3">
+              {/* Icon */}
+              <div className="relative flex-shrink-0">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center accent-glow"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  <ShieldCheck style={{ width: 20, height: 20, color: '#fff' }} />
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
+                  style={{ background: '#22c55e', borderColor: 'var(--bg)' }} />
+              </div>
+              {/* Text */}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold leading-none mb-1.5" style={{ color: 'var(--text-primary)' }}>
+                  {t('admin.admin')}
+                </p>
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                  style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }}>
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: 'var(--accent)' }} />
+                  <span className="text-[9px] font-bold uppercase tracking-[0.14em]"
+                    style={{ color: 'var(--accent)' }}>
+                    {t('admin.agencyPanel')}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
