@@ -63,7 +63,7 @@ export async function getInstagramSummary(start, end, creds) {
     params: { fields: 'followers_count,media_count,name,username', access_token: creds.access_token }
   });
 
-  // Fetch daily metrics and sum — more reliable than total_value across account types
+  // Fetch daily metric and sum over period — each metric fetched separately so one failure doesn't block others
   async function fetchMetricSum(metric) {
     try {
       const res = await axios.get(`${BASE}/${igId}/insights`, {
@@ -77,14 +77,14 @@ export async function getInstagramSummary(start, end, creds) {
       });
       return (res.data.data?.[0]?.values ?? []).reduce((sum, v) => sum + (v.value ?? 0), 0);
     } catch (err) {
-      console.error(`[instagram/insights] ${metric} failed:`, err.response?.data ?? err.message);
+      console.error(`[instagram/insights] ${metric} failed:`, err.response?.data?.error?.message ?? err.message);
       return 0;
     }
   }
 
-  const [reach, impressions, profile_views] = await Promise.all([
+  const [reach, new_followers, profile_views] = await Promise.all([
     fetchMetricSum('reach'),
-    fetchMetricSum('impressions'),
+    fetchMetricSum('follower_count'),
     fetchMetricSum('profile_views'),
   ]);
 
@@ -94,7 +94,7 @@ export async function getInstagramSummary(start, end, creds) {
     followers: accountRes.data.followers_count ?? 0,
     media_count: accountRes.data.media_count ?? 0,
     reach,
-    impressions,
+    new_followers,
     profile_views,
   };
 }
@@ -104,7 +104,7 @@ export async function getInstagramPosts(start, end, creds) {
   const res = await axios.get(`${BASE}/${igId}/media`, {
     params: {
       fields: 'id,caption,media_type,timestamp,like_count,comments_count',
-      limit: 30,
+      limit: 50,
       access_token: creds.access_token,
     }
   });
@@ -112,20 +112,55 @@ export async function getInstagramPosts(start, end, creds) {
   const startDate = new Date(start);
   const endDate = new Date(end + 'T23:59:59');
 
-  return (res.data.data ?? [])
+  const postsInPeriod = (res.data.data ?? [])
     .filter(post => {
       const d = new Date(post.timestamp);
       return d >= startDate && d <= endDate;
     })
-    .slice(0, 12)
-    .map(post => ({
-      id: post.id,
-      caption: post.caption
-        ? post.caption.slice(0, 100) + (post.caption.length > 100 ? '…' : '')
-        : '(no caption)',
-      type: post.media_type ?? 'IMAGE',
-      timestamp: post.timestamp,
-      likes: post.like_count ?? 0,
-      comments: post.comments_count ?? 0,
-    }));
+    .slice(0, 20);
+
+  // Enrich each post with per-post insights (reach, shares, saved)
+  const postsWithInsights = await Promise.all(
+    postsInPeriod.map(async (post) => {
+      let shares = 0, saved = 0, reach = 0;
+      try {
+        const insRes = await axios.get(`${BASE}/${post.id}/insights`, {
+          params: {
+            metric: 'reach,saved,shares',
+            access_token: creds.access_token,
+          }
+        });
+        for (const m of (insRes.data.data ?? [])) {
+          const val = m.values?.[0]?.value ?? m.value ?? 0;
+          if (m.name === 'reach') reach = val;
+          else if (m.name === 'saved') saved = val;
+          else if (m.name === 'shares') shares = val;
+        }
+      } catch (err) {
+        console.error(`[instagram/post-insights] ${post.id}:`, err.response?.data?.error?.message ?? err.message);
+      }
+
+      const likes = post.like_count ?? 0;
+      const comments = post.comments_count ?? 0;
+      const engagement = likes + comments + shares + saved;
+      const engagement_rate = reach > 0 ? (engagement / reach) * 100 : 0;
+
+      return {
+        id: post.id,
+        caption: post.caption
+          ? post.caption.slice(0, 100) + (post.caption.length > 100 ? '…' : '')
+          : '(no caption)',
+        type: post.media_type ?? 'IMAGE',
+        timestamp: post.timestamp,
+        likes,
+        comments,
+        shares,
+        saved,
+        reach,
+        engagement_rate,
+      };
+    })
+  );
+
+  return postsWithInsights;
 }
