@@ -8,22 +8,25 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useClientInfo } from '@/lib/client-context'
 import { clearToken } from '@/lib/auth'
+import { useLanguage } from '@/lib/language-context'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 const NAV = [
-  { href: '/',               label: 'Dashboard',  icon: BarChart3  },
-  { href: '/campaigns',      label: 'Campaigns',  icon: Target     },
-  { href: '/analytics',      label: 'Analytics',  icon: TrendingUp },
-  { href: '/audiences',      label: 'Audiences',  icon: Users      },
-  { href: '/email',          label: 'Email',      icon: Mail       },
-  { href: '/meta',           label: 'Meta Ads',   icon: Globe      },
-  { href: '/meta-organisch', label: 'Organisch',  icon: Camera     },
-  { href: '/search-console', label: 'Search',     icon: Search     },
+  { href: '/',               key: 'sidebar.nav.dashboard',  icon: BarChart3  },
+  { href: '/campaigns',      key: 'sidebar.nav.campaigns',  icon: Target     },
+  { href: '/analytics',      key: 'sidebar.nav.analytics',  icon: TrendingUp },
+  { href: '/audiences',      key: 'sidebar.nav.audiences',  icon: Users      },
+  { href: '/email',          key: 'sidebar.nav.email',      icon: Mail       },
+  { href: '/meta',           key: 'sidebar.nav.meta',       icon: Globe      },
+  { href: '/meta-organisch', key: 'sidebar.nav.organisch',  icon: Camera     },
+  { href: '/search-console', key: 'sidebar.nav.search',     icon: Search     },
 ]
 
 export function Sidebar() {
   const pathname   = usePathname()
   const router     = useRouter()
   const clientInfo = useClientInfo()
+  const { t }      = useLanguage()
 
   function handleSignOut() {
     clearToken()
@@ -71,7 +74,7 @@ export function Sidebar() {
           </div>
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] mt-1"
             style={{ color: 'var(--text-subtle)' }}>
-            Marketing Dashboard
+            {t('sidebar.marketingDashboard')}
           </p>
         </Link>
       </div>
@@ -95,7 +98,7 @@ export function Sidebar() {
                 style={{ background: '#22C55E', boxShadow: '0 0 6px rgba(34,197,94,0.75)' }} />
               <span className="text-[10px] font-semibold uppercase tracking-[0.1em]"
                 style={{ color: 'var(--text-subtle)' }}>
-                Live
+                {t('sidebar.live')}
               </span>
             </div>
           </div>
@@ -106,13 +109,13 @@ export function Sidebar() {
       <div className="relative z-10 px-5 mb-1">
         <p className="text-[10px] font-bold uppercase tracking-[0.14em]"
           style={{ color: 'var(--text-subtle)' }}>
-          Navigation
+          {t('sidebar.navigation')}
         </p>
       </div>
 
       {/* ── Nav items ─────────────────────────────── */}
       <nav className="relative z-10 flex-1 px-3 pb-2 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ href, label, icon: Icon }, idx) => {
+        {NAV.map(({ href, key, icon: Icon }, idx) => {
           const active = pathname === href
           return (
             <Link
@@ -146,7 +149,7 @@ export function Sidebar() {
                 className="w-4 h-4 flex-shrink-0"
                 style={{ color: active ? 'rgba(255,255,255,0.9)' : 'inherit' }}
               />
-              <span>{label}</span>
+              <span>{t(key)}</span>
               {active && (
                 <span
                   className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -158,24 +161,29 @@ export function Sidebar() {
         })}
       </nav>
 
+      {/* ── Language Toggle ───────────────────────── */}
+      <LanguageToggle />
+
       {/* ── Sign Out ──────────────────────────────── */}
-      <div className="relative z-10 px-3 py-4" style={{ borderTop: '1px solid var(--border)' }}>
-        <button
-          onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
-          style={{ color: 'var(--text-muted)', background: 'transparent' }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(239,68,68,0.08)'
-            e.currentTarget.style.color = '#ef4444'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = 'var(--text-muted)'
-          }}
-        >
-          <LogOut className="w-4 h-4 flex-shrink-0" />
-          Sign Out
-        </button>
+      <div className="relative z-10 px-3 pb-4" style={{ borderTop: '1px solid var(--border)' }}>
+        <div className="pt-4">
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
+            style={{ color: 'var(--text-muted)', background: 'transparent' }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(239,68,68,0.08)'
+              e.currentTarget.style.color = '#ef4444'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = 'var(--text-muted)'
+            }}
+          >
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            {t('sidebar.signOut')}
+          </button>
+        </div>
       </div>
     </aside>
   )

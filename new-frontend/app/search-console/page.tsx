@@ -10,6 +10,7 @@ import { MousePointerClick, Eye, TrendingUp, Search, Loader2 } from 'lucide-reac
 import { apiFetch } from '@/lib/api'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
+import { useLanguage } from '@/lib/language-context'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -42,6 +43,7 @@ function pctChg(a: number, b: number | null | undefined) {
 
 export default function SearchConsolePage() {
   const { startDate, endDate } = useDateRange()
+  const { t } = useLanguage()
   const [summary, setSummary] = useState<any>(null)
   const [queries, setQueries] = useState<any[]>([])
   const [pages, setPages] = useState<any[]>([])
@@ -90,7 +92,7 @@ export default function SearchConsolePage() {
       <Sidebar />
 
       <div className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <Header title="Search Console" description="Organic search performance for spotlezz.nl" />
+        <Header title={t('search.title')} description={t('search.desc')} />
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-8 page-in">
@@ -98,7 +100,7 @@ export default function SearchConsolePage() {
             {loading && (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                <span className="ml-3 text-muted-foreground">Loading Search Console…</span>
+                <span className="ml-3 text-muted-foreground">{t('search.loading')}</span>
               </div>
             )}
 
@@ -118,25 +120,25 @@ export default function SearchConsolePage() {
                 {/* KPI cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                   <StatCard
-                    label="Clicks"
+                    label={t('search.stat.clicks')}
                     value={<AnimatedNumber value={cur.clicks} delay={0}   formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
                     icon={MousePointerClick} delay={0}
                   />
                   <StatCard
-                    label="Impressions"
+                    label={t('search.stat.impressions')}
                     value={<AnimatedNumber value={cur.impressions} delay={100} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
                     icon={Eye} delay={100}
                   />
                   <StatCard
-                    label="Avg. CTR"
+                    label={t('search.stat.ctr')}
                     value={<AnimatedNumber value={cur.ctr} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />}
                     change={pctChg(cur.ctr, prev?.ctr) != null ? { value: Math.abs(pctChg(cur.ctr, prev?.ctr)!), isPositive: pctChg(cur.ctr, prev?.ctr)! >= 0 } : undefined}
                     icon={TrendingUp} delay={200}
                   />
                   <StatCard
-                    label="Avg. Position"
+                    label={t('search.stat.position')}
                     value={<AnimatedNumber value={cur.position} delay={300} formatter={n => n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })} />}
                     change={pctChg(cur.position, prev?.position) != null ? { value: Math.abs(pctChg(cur.position, prev?.position)!), isPositive: pctChg(cur.position, prev?.position)! <= 0 } : undefined}
                     icon={Search} delay={300}
@@ -147,24 +149,24 @@ export default function SearchConsolePage() {
                   {/* Top queries */}
                   <div>
                     <div className="mb-4">
-                      <p className="text-foreground font-bold text-lg">Top Search Queries</p>
-                      <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · <span style={{ color: '#22C55E' }}>🥇 top 3</span> · <span style={{ color: '#EAB308' }}>✦ top 10</span> · positie (lager = beter)</p>
+                      <p className="text-foreground font-bold text-lg">{t('search.topQueries')}</p>
+                      <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · <span style={{ color: '#22C55E' }}>🥇 {t('search.top3')}</span> · <span style={{ color: '#EAB308' }}>✦ {t('search.top10')}</span> · {t('search.positionNote')}</p>
                     </div>
 
                     <div className="stat-card p-0 overflow-hidden">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
-                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">Query</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Clicks</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Impr.</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">CTR</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Pos.</th>
+                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('search.table.query')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('search.table.clicks')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('search.table.impressions')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('search.table.ctr')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('search.table.position')}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {queries.length === 0 ? (
-                            <tr><td colSpan={5} className="text-center text-sm py-10" style={{ color: 'var(--text-subtle)' }}>No search queries found for this period.</td></tr>
+                            <tr><td colSpan={5} className="text-center text-sm py-10" style={{ color: 'var(--text-subtle)' }}>{t('search.noQueries')}</td></tr>
                           ) : queries.map((q, i) => (
                             <tr key={i} className="border-b border-[var(--border)] last:border-0 transition-colors fade-in-up"
                               style={{ cursor: 'default', animationDelay: `${i * 50}ms` }}
@@ -191,7 +193,7 @@ export default function SearchConsolePage() {
                   {/* Top pages */}
                   <div>
                     <div className="mb-4">
-                      <p className="text-foreground font-bold text-lg">Top Pages</p>
+                      <p className="text-foreground font-bold text-lg">{t('search.topPages')}</p>
                       <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /></p>
                     </div>
 
@@ -199,15 +201,15 @@ export default function SearchConsolePage() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
-                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">Page</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Clicks</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Impr.</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Pos.</th>
+                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('search.table.page')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('search.table.clicks')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('search.table.impressions')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('search.table.position')}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {pages.length === 0 ? (
-                            <tr><td colSpan={4} className="text-center text-sm py-10" style={{ color: 'var(--text-subtle)' }}>No page data found for this period.</td></tr>
+                            <tr><td colSpan={4} className="text-center text-sm py-10" style={{ color: 'var(--text-subtle)' }}>{t('search.noPages')}</td></tr>
                           ) : pages.map((p, i) => (
                             <tr key={i} className="border-b border-[var(--border)] last:border-0 transition-colors fade-in-up"
                               style={{ cursor: 'default', animationDelay: `${i * 50}ms` }}

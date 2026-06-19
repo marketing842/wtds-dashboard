@@ -6,12 +6,15 @@ import { Loader2, LogOut, Users, UserPlus, ChevronLeft, ChevronRight, ShieldChec
 import Link from 'next/link'
 import { ModeToggle } from '@/components/ModeToggle'
 import { clearToken, getTokenPayload } from '@/lib/auth'
+import { useLanguage } from '@/lib/language-context'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter()
   const pathname = usePathname()
   const [checking, setChecking] = useState(true)
   const isLoginPage = pathname === '/admin/login'
+  const { t } = useLanguage()
 
   function handleSignOut() {
     clearToken()
@@ -39,17 +42,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const navItems = [
-    { href: '/admin',         label: 'All Clients', icon: Users    },
-    { href: '/admin/clients', label: 'Add Client',  icon: UserPlus },
+    { href: '/admin',         label: t('admin.nav.allClients'), icon: Users    },
+    { href: '/admin/clients', label: t('admin.nav.addClient'),  icon: UserPlus },
   ]
 
   const isClientDetail = pathname.startsWith('/admin/clients/')
 
   const pageTitle = (() => {
-    if (pathname === '/admin') return 'All Clients'
-    if (pathname === '/admin/clients') return 'Add Client'
-    if (isClientDetail) return 'Edit Client'
-    return 'Admin'
+    if (pathname === '/admin') return t('admin.header.title.allClients')
+    if (pathname === '/admin/clients') return t('admin.header.title.addClient')
+    if (isClientDetail) return t('admin.header.title.editClient')
+    return t('admin.admin')
   })()
 
   return (
@@ -93,7 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] mt-1"
             style={{ color: 'var(--text-subtle)' }}>
-            Marketing Dashboard
+            {t('sidebar.marketingDashboard')}
           </p>
         </div>
 
@@ -109,14 +112,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold leading-none" style={{ color: 'var(--text-primary)' }}>
-                Admin
+                {t('admin.admin')}
               </p>
               <div className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-0.5 rounded-md"
                 style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }}>
                 <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'var(--accent)' }} />
                 <span className="text-[9px] font-bold uppercase tracking-[0.12em]"
                   style={{ color: 'var(--accent)' }}>
-                  Agency Panel
+                  {t('admin.agencyPanel')}
                 </span>
               </div>
             </div>
@@ -127,7 +130,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="relative z-10 px-5 mb-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em]"
             style={{ color: 'var(--text-subtle)' }}>
-            Management
+            {t('admin.management')}
           </p>
         </div>
 
@@ -177,24 +180,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
+        {/* Language Toggle */}
+        <LanguageToggle />
+
         {/* Sign Out */}
-        <div className="relative z-10 px-3 py-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
-            style={{ color: 'var(--text-muted)', background: 'transparent' }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(239,68,68,0.08)'
-              e.currentTarget.style.color = '#ef4444'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = 'var(--text-muted)'
-            }}
-          >
-            <LogOut className="w-4 h-4 flex-shrink-0" />
-            Sign Out
-          </button>
+        <div className="relative z-10 px-3 pb-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="pt-4">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
+              style={{ color: 'var(--text-muted)', background: 'transparent' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(239,68,68,0.08)'
+                e.currentTarget.style.color = '#ef4444'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'var(--text-muted)'
+              }}
+            >
+              <LogOut className="w-4 h-4 flex-shrink-0" />
+              {t('sidebar.signOut')}
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -226,7 +234,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 }}
               >
                 <ChevronLeft className="w-4 h-4" />
-                Clients
+                {t('admin.header.clients')}
               </Link>
               <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-subtle)' }} />
               <span

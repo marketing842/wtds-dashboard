@@ -9,6 +9,7 @@ import { MousePointerClick, Eye, Euro, Target, Loader2, RefreshCw } from 'lucide
 
 import { apiFetch } from '@/lib/api'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
+import { useLanguage } from '@/lib/language-context'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -42,6 +43,7 @@ const MATCH_BADGE: Record<string, { label: string; color: string }> = {
 
 export default function CampaignsPage() {
   const { startDate, endDate } = useDateRange()
+  const { t } = useLanguage()
   const [summary, setSummary] = useState<any>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [keywords, setKeywords] = useState<any[]>([])
@@ -118,7 +120,7 @@ export default function CampaignsPage() {
       <Sidebar />
 
       <div className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <Header title="Google Ads" description="Real campaign data for the selected period" />
+        <Header title={t('campaigns.title')} description={t('campaigns.desc')} />
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-8 page-in">
@@ -126,13 +128,13 @@ export default function CampaignsPage() {
             {loading && (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                <span className="ml-3 text-muted-foreground">Loading Google Ads…</span>
+                <span className="ml-3 text-muted-foreground">{t('campaigns.loading')}</span>
               </div>
             )}
 
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded p-4 text-red-700 dark:text-red-300 text-sm mb-8">
-                {error} — Is the backend running on port 3000?
+                {error} {t('campaigns.backendQ')}
               </div>
             )}
 
@@ -141,25 +143,25 @@ export default function CampaignsPage() {
                 {/* KPI cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                   <StatCard
-                    label="Impressions"
+                    label={t('campaigns.stat.impressions')}
                     value={cur.impressions >= 1000 ? `${fmt(cur.impressions / 1000)}K` : fmt(cur.impressions, 0)}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
                     icon={Eye}
                   />
                   <StatCard
-                    label="Clicks"
+                    label={t('campaigns.stat.clicks')}
                     value={fmt(cur.clicks, 0)}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
                     icon={MousePointerClick}
                   />
                   <StatCard
-                    label="Cost"
+                    label={t('campaigns.stat.cost')}
                     value={fmtEur(cur.cost)}
                     change={pctChg(cur.cost, prev?.cost) != null ? { value: Math.abs(pctChg(cur.cost, prev?.cost)!), isPositive: pctChg(cur.cost, prev?.cost)! <= 0 } : undefined}
                     icon={Euro}
                   />
                   <StatCard
-                    label="Conversions"
+                    label={t('campaigns.stat.conversions')}
                     value={fmt(cur.conversions, 0)}
                     change={pctChg(cur.conversions, prev?.conversions) != null ? { value: Math.abs(pctChg(cur.conversions, prev?.conversions)!), isPositive: pctChg(cur.conversions, prev?.conversions)! >= 0 } : undefined}
                     icon={Target}
@@ -169,9 +171,9 @@ export default function CampaignsPage() {
                 {/* Secondary KPIs */}
                 <div className="grid grid-cols-3 gap-6 mb-8">
                   {[
-                    { label: 'CTR', value: `${fmt(cur.ctr)}%` },
-                    { label: 'Avg. CPC', value: fmtEur(cur.avg_cpc) },
-                    { label: 'CPA', value: cur.conversions > 0 ? fmtEur(cur.cpa) : '—' },
+                    { label: t('campaigns.stat.ctr'), value: `${fmt(cur.ctr)}%` },
+                    { label: t('campaigns.stat.avgCpc'), value: fmtEur(cur.avg_cpc) },
+                    { label: t('campaigns.stat.cpa'), value: cur.conversions > 0 ? fmtEur(cur.cpa) : '—' },
                   ].map(m => (
                     <div key={m.label} className="stat-card flex items-center justify-between py-4">
                       <p className="text-muted-foreground text-sm font-medium">{m.label}</p>
@@ -183,44 +185,44 @@ export default function CampaignsPage() {
                 {/* Top Keywords */}
                 <div className="mb-8">
                   <div className="mb-4">
-                    <p className="text-foreground font-bold text-lg">Top Keywords</p>
-                    <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · top 10 by clicks</p>
+                    <p className="text-foreground font-bold text-lg">{t('campaigns.topKeywords')}</p>
+                    <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · {t('campaigns.topKeywordsDesc')}</p>
                   </div>
 
                   {kwLoading && (
                     <div className="flex items-center gap-3 py-6">
                       <Loader2 className="w-5 h-5 animate-spin text-accent" />
-                      <span className="text-muted-foreground text-sm">Loading keywords…</span>
+                      <span className="text-muted-foreground text-sm">{t('campaigns.kwLoading')}</span>
                     </div>
                   )}
 
                   {kwError && (
                     <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.07] rounded-lg px-4 py-3">
-                      <span className="text-zinc-500 text-sm">Keywords unavailable for this period.</span>
+                      <span className="text-zinc-500 text-sm">{t('campaigns.keywordsUnavailable')}</span>
                       <button
                         onClick={() => fetchKeywords(startDate, endDate)}
                         className="flex items-center gap-1.5 text-xs font-semibold text-[#FF4D00] hover:text-orange-400 transition-colors"
                       >
-                        <RefreshCw className="w-3 h-3" /> Retry
+                        <RefreshCw className="w-3 h-3" /> {t('campaigns.retry')}
                       </button>
                     </div>
                   )}
 
                   {!kwLoading && !kwError && (
                     topKeywords.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">No keyword data for this period.</p>
+                      <p className="text-muted-foreground text-sm">{t('campaigns.noKeywords')}</p>
                     ) : (
                       <div className="stat-card p-0 overflow-hidden">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-[var(--border)]">
-                              <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">Keyword</th>
-                              <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">Match</th>
-                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Clicks</th>
-                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">CTR</th>
-                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Avg CPC</th>
-                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Conv.</th>
-                              <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">Cost</th>
+                              <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('campaigns.table.keyword')}</th>
+                              <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.table.match')}</th>
+                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.table.clicks')}</th>
+                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.table.ctr')}</th>
+                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.table.avgCpc')}</th>
+                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.table.conv')}</th>
+                              <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">{t('campaigns.table.cost')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -252,8 +254,8 @@ export default function CampaignsPage() {
                 {/* Active campaigns */}
                 <div className="mb-6">
                   <div className="mb-4">
-                    <p className="text-foreground font-bold text-lg">Active Campaigns</p>
-                    <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · {active.length} active{pausedCount > 0 ? `, ${pausedCount} paused` : ''}</p>
+                    <p className="text-foreground font-bold text-lg">{t('campaigns.activeCampaigns')}</p>
+                    <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · {active.length} {t('campaigns.active')}{pausedCount > 0 ? `, ${pausedCount} ${t('campaigns.paused')}` : ''}</p>
                   </div>
 
                   <div className="space-y-4">
@@ -262,18 +264,18 @@ export default function CampaignsPage() {
                         <div className="flex items-start justify-between mb-5">
                           <p className="text-foreground font-semibold text-base">{c.name}</p>
                           <span className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex-shrink-0 ml-4">
-                            Active
+                            {t('campaigns.badge.active')}
                           </span>
                         </div>
 
                         <div className="grid grid-cols-6 gap-4">
                           {[
-                            { label: 'Impressions', value: c.impressions >= 1000 ? `${fmt(c.impressions / 1000)}K` : String(c.impressions) },
-                            { label: 'Clicks', value: String(c.clicks) },
-                            { label: 'CTR', value: `${fmt(c.ctr)}%` },
-                            { label: 'Cost', value: fmtEur(c.cost) },
-                            { label: 'Conversions', value: String(c.conversions) },
-                            { label: 'CPA', value: c.conversions > 0 ? fmtEur(c.cpa) : '—', accent: true },
+                            { label: t('campaigns.stat.impressions'), value: c.impressions >= 1000 ? `${fmt(c.impressions / 1000)}K` : String(c.impressions) },
+                            { label: t('campaigns.stat.clicks'), value: String(c.clicks) },
+                            { label: t('campaigns.stat.ctr'), value: `${fmt(c.ctr)}%` },
+                            { label: t('campaigns.stat.cost'), value: fmtEur(c.cost) },
+                            { label: t('campaigns.stat.conversions'), value: String(c.conversions) },
+                            { label: t('campaigns.stat.cpa'), value: c.conversions > 0 ? fmtEur(c.cpa) : '—', accent: true },
                           ].map(m => (
                             <div key={m.label}>
                               <p className="text-muted-foreground text-xs mb-1">{m.label}</p>
@@ -288,7 +290,7 @@ export default function CampaignsPage() {
 
                 {pausedCount > 0 && (
                   <p className="text-muted-foreground text-sm">
-                    + {pausedCount} paused campaign{pausedCount !== 1 ? 's' : ''} not shown.
+                    + {pausedCount} {pausedCount !== 1 ? t('campaigns.pausedNotShownPlural') : t('campaigns.pausedNotShown')}
                   </p>
                 )}
               </>

@@ -10,6 +10,7 @@ import { useDateRange } from '@/lib/date-range-context'
 import { Eye, MousePointerClick, Euro, TrendingUp, Loader2, ShoppingCart, Play, Film } from 'lucide-react'
 
 import { apiFetch } from '@/lib/api'
+import { useLanguage } from '@/lib/language-context'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -36,6 +37,7 @@ const RANK_COLOR = ['text-yellow-400', 'text-muted-foreground', 'text-orange-400
 
 export default function MetaPage() {
   const { startDate, endDate } = useDateRange()
+  const { t } = useLanguage()
   const [summary, setSummary] = useState<any>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [creatives, setCreatives] = useState<any[]>([])
@@ -91,7 +93,7 @@ export default function MetaPage() {
       <Sidebar />
 
       <div className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <Header title="Meta Ads" description="Facebook & Instagram campaign data for the selected period" />
+        <Header title={t('meta.title')} description={t('meta.desc')} />
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-8 page-in">
@@ -99,7 +101,7 @@ export default function MetaPage() {
             {loading && (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                <span className="ml-3 text-muted-foreground">Loading Meta Ads…</span>
+                <span className="ml-3 text-muted-foreground">{t('meta.loading')}</span>
               </div>
             )}
 
@@ -114,19 +116,19 @@ export default function MetaPage() {
                 {/* KPI cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                   <StatCard
-                    label="Impressions"
+                    label={t('meta.stat.impressions')}
                     value={<AnimatedNumber value={cur.impressions} delay={0}   formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
                     icon={Eye} delay={0}
                   />
                   <StatCard
-                    label="Clicks"
+                    label={t('meta.stat.clicks')}
                     value={<AnimatedNumber value={cur.clicks} delay={100} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
                     icon={MousePointerClick} delay={100}
                   />
                   <StatCard
-                    label="Ad Spend"
+                    label={t('meta.stat.spend')}
                     value={<AnimatedNumber value={cur.spend} delay={200} formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />}
                     change={pctChg(cur.spend, prev?.spend) != null ? { value: Math.abs(pctChg(cur.spend, prev?.spend)!), isPositive: pctChg(cur.spend, prev?.spend)! <= 0 } : undefined}
                     icon={Euro} delay={200}

@@ -6,20 +6,21 @@ import { Header } from '@/components/Header'
 import { Users, Target, Loader2 } from 'lucide-react'
 
 import { apiFetch } from '@/lib/api'
+import { useLanguage } from '@/lib/language-context'
 
 function fmt(n: number) {
   return n.toLocaleString('nl-NL')
 }
 
-function timeAgo(dateStr: string) {
+function timeAgo(dateStr: string, t: (k: string) => string) {
   const d = new Date(dateStr)
   const now = new Date()
   const days = Math.round((now.getTime() - d.getTime()) / 86400000)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 30) return `${days}d ago`
+  if (days === 0) return t('time.today')
+  if (days === 1) return t('time.yesterday')
+  if (days < 30) return `${days}${t('time.daysAgo')}`
   const months = Math.floor(days / 30)
-  return `${months}mo ago`
+  return `${months}${t('time.monthsAgo')}`
 }
 
 export default function AudiencesPage() {
@@ -27,6 +28,7 @@ export default function AudiencesPage() {
   const [segments, setSegments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { t } = useLanguage()
 
   useEffect(() => {
     apiFetch(`/api/klaviyo/lists`)
@@ -53,7 +55,7 @@ export default function AudiencesPage() {
       <Sidebar />
 
       <div className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <Header title="Audiences" description="Klaviyo lists & segments" showDatePicker={false} />
+        <Header title={t('audiences.title')} description={t('audiences.desc')} showDatePicker={false} />
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-8 page-in">
@@ -61,7 +63,7 @@ export default function AudiencesPage() {
             {loading && (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                <span className="ml-3 text-muted-foreground">Loading audiences…</span>
+                <span className="ml-3 text-muted-foreground">{t('audiences.loading')}</span>
               </div>
             )}
 
@@ -77,21 +79,21 @@ export default function AudiencesPage() {
                 <div className="flex items-center gap-2 mb-5 px-3 py-2 rounded-lg text-xs text-muted-foreground"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <span className="text-accent font-bold">ℹ</span>
-                  Audience sizes tonen de actuele stand en worden niet beïnvloed door de datumselectie.
+                  {t('audiences.note')}
                 </div>
 
                 {/* Summary cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="stat-card flex items-center justify-between">
                     <div>
-                      <p className="text-muted-foreground text-sm font-medium">Email Lists</p>
+                      <p className="text-muted-foreground text-sm font-medium">{t('audiences.stat.emailLists')}</p>
                       <p className="text-3xl font-bold text-foreground mt-1">{lists.length}</p>
                     </div>
                     <Users className="w-8 h-8 text-accent opacity-60" />
                   </div>
                   <div className="stat-card flex items-center justify-between">
                     <div>
-                      <p className="text-muted-foreground text-sm font-medium">Total Members</p>
+                      <p className="text-muted-foreground text-sm font-medium">{t('audiences.stat.totalMembers')}</p>
                       <p className="text-3xl font-bold text-foreground mt-1">
                         {totalMembers > 0 ? fmt(totalMembers) : '—'}
                       </p>
@@ -100,7 +102,7 @@ export default function AudiencesPage() {
                   </div>
                   <div className="stat-card flex items-center justify-between">
                     <div>
-                      <p className="text-muted-foreground text-sm font-medium">Segments</p>
+                      <p className="text-muted-foreground text-sm font-medium">{t('audiences.stat.segments')}</p>
                       <p className="text-3xl font-bold text-foreground mt-1">{segments.length}</p>
                     </div>
                     <Target className="w-8 h-8 text-blue-700 dark:text-blue-400 opacity-60" />
@@ -109,17 +111,17 @@ export default function AudiencesPage() {
 
                 {/* Lists */}
                 <div className="mb-8">
-                  <p className="text-foreground font-bold text-lg mb-4">Email Lists</p>
+                  <p className="text-foreground font-bold text-lg mb-4">{t('audiences.emailLists')}</p>
                   {lists.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No lists found in Klaviyo.</p>
+                    <p className="text-muted-foreground text-sm">{t('audiences.noLists')}</p>
                   ) : (
                     <div className="stat-card p-0 overflow-hidden">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
-                            <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">List Name</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Members</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">Last Updated</th>
+                            <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('audiences.table.listName')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('audiences.table.members')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">{t('audiences.table.lastUpdated')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -129,7 +131,7 @@ export default function AudiencesPage() {
                               <td className="px-4 py-3 text-right text-accent font-bold">
                                 {l.profile_count != null ? fmt(l.profile_count) : '—'}
                               </td>
-                              <td className="px-5 py-3 text-right text-muted-foreground text-xs">{timeAgo(l.updated)}</td>
+                              <td className="px-5 py-3 text-right text-muted-foreground text-xs">{timeAgo(l.updated, t)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -141,20 +143,20 @@ export default function AudiencesPage() {
                 {/* Segments */}
                 {segments.length > 0 && (
                   <div>
-                    <p className="text-foreground font-bold text-lg mb-4">Segments</p>
+                    <p className="text-foreground font-bold text-lg mb-4">{t('audiences.segments')}</p>
                     <div className="stat-card p-0 overflow-hidden">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
-                            <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">Segment Name</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">Last Updated</th>
+                            <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('audiences.table.segmentName')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">{t('audiences.table.lastUpdated')}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {segments.map((s, i) => (
                             <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--border)]/50 transition-colors">
                               <td className="px-5 py-3 text-foreground font-medium">{s.name}</td>
-                              <td className="px-5 py-3 text-right text-muted-foreground text-xs">{timeAgo(s.updated)}</td>
+                              <td className="px-5 py-3 text-right text-muted-foreground text-xs">{timeAgo(s.updated, t)}</td>
                             </tr>
                           ))}
                         </tbody>

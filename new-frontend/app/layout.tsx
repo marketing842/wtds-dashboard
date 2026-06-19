@@ -4,6 +4,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { DateRangeProvider } from '@/lib/date-range-context'
 import { ClientProvider } from '@/lib/client-context'
+import { LanguageProvider } from '@/lib/language-context'
 
 export const metadata: Metadata = {
   title: 'What The *DS - Marketing Dashboard',
@@ -41,11 +42,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
         <ThemeProvider>
-          <ClientProvider>
-            <DateRangeProvider>
-              {children}
-            </DateRangeProvider>
-          </ClientProvider>
+          <LanguageProvider>
+            <ClientProvider>
+              <DateRangeProvider>
+                {children}
+              </DateRangeProvider>
+            </ClientProvider>
+          </LanguageProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

@@ -13,6 +13,7 @@ import {
 } from 'recharts'
 
 import { apiFetch } from '@/lib/api'
+import { useLanguage } from '@/lib/language-context'
 
 function fmt(n: number, decimals = 0) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -40,6 +41,7 @@ function pctChg(a: number, b: number | null | undefined) {
 export default function AnalyticsPage() {
   const { startDate, endDate } = useDateRange()
   const { resolvedTheme } = useTheme()
+  const { t } = useLanguage()
   const isDark = resolvedTheme !== 'light'
   const chartGrid    = isDark ? '#2E3350' : '#E5E7EB'
   const chartTick    = isDark ? '#8B92A9' : '#9CA3AF'
@@ -93,7 +95,7 @@ export default function AnalyticsPage() {
       <Sidebar />
 
       <div className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <Header title="Analytics" description="Google Analytics 4 — website traffic & behaviour" />
+        <Header title={t('analytics.title')} description={t('analytics.desc')} />
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-8 page-in">
@@ -101,13 +103,13 @@ export default function AnalyticsPage() {
             {loading && (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                <span className="ml-3 text-muted-foreground">Loading Analytics…</span>
+                <span className="ml-3 text-muted-foreground">{t('analytics.loading')}</span>
               </div>
             )}
 
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-700 dark:text-red-300 text-sm mb-8">
-                <p className="font-semibold mb-1">Analytics error</p>
+                <p className="font-semibold mb-1">{t('analytics.error')}</p>
                 <p>{error}</p>
                 {error.includes('GOOGLE_GA4_REFRESH_TOKEN') && (
                   <p className="mt-2 text-muted-foreground text-xs">
@@ -122,25 +124,25 @@ export default function AnalyticsPage() {
                 {/* KPI cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                   <StatCard
-                    label="Active Users"
+                    label={t('analytics.stat.activeUsers')}
                     value={summary.users >= 1000 ? `${fmt(summary.users / 1000, 1)}K` : fmt(summary.users)}
                     change={pctChg(summary.users, prevSummary?.users) != null ? { value: Math.abs(pctChg(summary.users, prevSummary?.users)!), isPositive: pctChg(summary.users, prevSummary?.users)! >= 0 } : undefined}
                     icon={Users}
                   />
                   <StatCard
-                    label="Sessions"
+                    label={t('analytics.stat.sessions')}
                     value={summary.sessions >= 1000 ? `${fmt(summary.sessions / 1000, 1)}K` : fmt(summary.sessions)}
                     change={pctChg(summary.sessions, prevSummary?.sessions) != null ? { value: Math.abs(pctChg(summary.sessions, prevSummary?.sessions)!), isPositive: pctChg(summary.sessions, prevSummary?.sessions)! >= 0 } : undefined}
                     icon={TrendingUp}
                   />
                   <StatCard
-                    label="Pageviews"
+                    label={t('analytics.stat.pageviews')}
                     value={summary.pageviews >= 1000 ? `${fmt(summary.pageviews / 1000, 1)}K` : fmt(summary.pageviews)}
                     change={pctChg(summary.pageviews, prevSummary?.pageviews) != null ? { value: Math.abs(pctChg(summary.pageviews, prevSummary?.pageviews)!), isPositive: pctChg(summary.pageviews, prevSummary?.pageviews)! >= 0 } : undefined}
                     icon={Eye}
                   />
                   <StatCard
-                    label="New Users"
+                    label={t('analytics.stat.newUsers')}
                     value={fmt(summary.new_users)}
                     change={pctChg(summary.new_users, prevSummary?.new_users) != null ? { value: Math.abs(pctChg(summary.new_users, prevSummary?.new_users)!), isPositive: pctChg(summary.new_users, prevSummary?.new_users)! >= 0 } : undefined}
                     icon={Users}
@@ -150,11 +152,11 @@ export default function AnalyticsPage() {
                 {/* Secondary KPIs */}
                 <div className="grid grid-cols-2 gap-6 mb-8">
                   <div className="stat-card flex items-center justify-between py-4">
-                    <p className="text-muted-foreground text-sm font-medium">Bounce Rate</p>
+                    <p className="text-muted-foreground text-sm font-medium">{t('analytics.stat.bounceRate')}</p>
                     <p className="text-2xl font-bold text-accent">{fmt(summary.bounce_rate, 1)}%</p>
                   </div>
                   <div className="stat-card flex items-center justify-between py-4">
-                    <p className="text-muted-foreground text-sm font-medium">Avg. Session Duration</p>
+                    <p className="text-muted-foreground text-sm font-medium">{t('analytics.stat.avgSession')}</p>
                     <p className="text-2xl font-bold text-accent">{fmtDuration(summary.avg_session)}</p>
                   </div>
                 </div>
@@ -163,7 +165,7 @@ export default function AnalyticsPage() {
                   {/* Traffic sources chart */}
                   <div>
                     <div className="mb-4">
-                      <p className="text-foreground font-bold text-lg">Traffic Sources</p>
+                      <p className="text-foreground font-bold text-lg">{t('analytics.trafficSources')}</p>
                       <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /></p>
                     </div>
                     <div className="stat-card">
@@ -191,22 +193,22 @@ export default function AnalyticsPage() {
                   {/* Top pages */}
                   <div>
                     <div className="mb-4">
-                      <p className="text-foreground font-bold text-lg">Top Pages</p>
+                      <p className="text-foreground font-bold text-lg">{t('analytics.topPages')}</p>
                       <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /></p>
                     </div>
                     <div className="stat-card p-0 overflow-hidden">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
-                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">Page</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Views</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Users</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Bounce</th>
+                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('analytics.table.page')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('analytics.table.views')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('analytics.table.users')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('analytics.table.bounce')}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {pages.length === 0 ? (
-                            <tr><td colSpan={4} className="text-center text-muted-foreground text-sm py-8">No data for this period.</td></tr>
+                            <tr><td colSpan={4} className="text-center text-muted-foreground text-sm py-8">{t('analytics.noData')}</td></tr>
                           ) : pages.map((p, i) => (
                             <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-white/5 transition-colors">
                               <td className="px-4 py-3 text-foreground text-xs font-medium truncate max-w-[180px]">{p.page}</td>

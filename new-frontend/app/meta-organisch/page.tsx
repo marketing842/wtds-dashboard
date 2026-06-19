@@ -12,6 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import { apiFetch } from '@/lib/api'
+import { useLanguage } from '@/lib/language-context'
 import type { ReactNode } from 'react'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
@@ -88,6 +89,7 @@ function KpiCard({ label, value, sub, icon: Icon, accent = false, delay = 0 }: {
 export default function MetaOrganischPage() {
   const { startDate, endDate } = useDateRange()
   const { resolvedTheme } = useTheme()
+  const { t } = useLanguage()
   const isDark      = resolvedTheme !== 'light'
   const tooltipBg   = isDark ? '#1A1D27' : '#FFFFFF'
   const tooltipBdr  = isDark ? '#2E3350' : '#E2E6F0'
@@ -157,7 +159,7 @@ export default function MetaOrganischPage() {
       <Sidebar />
 
       <div className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <Header title="Meta Organisch" description="Instagram organic reach & engagement" />
+        <Header title={t('organisch.title')} description={t('organisch.desc')} />
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-8 page-in">
@@ -165,7 +167,7 @@ export default function MetaOrganischPage() {
             {loading && (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                <span className="ml-3 text-muted-foreground">Instagram data laden…</span>
+                <span className="ml-3 text-muted-foreground">{t('organisch.loading')}</span>
               </div>
             )}
 
@@ -188,7 +190,7 @@ export default function MetaOrganischPage() {
                     <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>@{summary.username || summary.name}</p>
                     <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
                       <AnimatedNumber value={summary.followers} delay={200} formatter={n => n >= 1000 ? `${(n/1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />
-                      {' '}followers · {fmt(summary.media_count)} posts totaal
+                      {' '}{t('organisch.followers')} · {fmt(summary.media_count)} {t('organisch.totalPostsSuffix')}
                     </p>
                   </div>
                   {summary.new_followers !== 0 && (
@@ -197,7 +199,7 @@ export default function MetaOrganischPage() {
                         {summary.new_followers > 0 ? '+' : ''}
                         <AnimatedNumber value={Math.abs(summary.new_followers)} delay={400} formatter={n => Math.round(n).toLocaleString('nl-NL')} />
                       </p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>nieuwe volgers</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('organisch.newFollowers')}</p>
                     </div>
                   )}
                 </div>
@@ -205,37 +207,37 @@ export default function MetaOrganischPage() {
                 {/* KPIs — uniform 3-column grid */}
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                   <KpiCard
-                    label="Posts Deze Periode"
+                    label={t('organisch.postsThisPeriod')}
                     value={<AnimatedNumber value={posts.length} delay={0} formatter={n => String(Math.round(n))} />}
                     sub={<DateRangeLabel start={startDate} end={endDate} />}
                     icon={Camera} delay={0}
                   />
                   <KpiCard
-                    label="Bereik"
+                    label={t('organisch.stat.reach')}
                     value={<AnimatedNumber value={reach} delay={100} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
-                    sub="unieke accounts bereikt"
+                    sub={t('organisch.uniqueReach')}
                     icon={Eye} accent delay={100}
                   />
                   <KpiCard
-                    label="Engagement Rate"
+                    label={t('organisch.stat.engagement')}
                     value={<AnimatedNumber value={engagementRate} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />}
-                    sub="likes + comments + shares + saves"
+                    sub={t('organisch.engagementSub')}
                     icon={TrendingUp} accent delay={200}
                   />
                   <KpiCard
-                    label="Likes"
+                    label={t('organisch.stat.likes')}
                     value={<AnimatedNumber value={totalLikes} delay={300} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                     icon={Heart} delay={300}
                   />
                   <KpiCard
-                    label="Reacties"
+                    label={t('organisch.stat.comments')}
                     value={<AnimatedNumber value={totalComments} delay={400} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                     icon={MessageCircle} delay={400}
                   />
-                  {totalShares > 0 && <KpiCard label="Shares" value={<AnimatedNumber value={totalShares} delay={500} formatter={n => Math.round(n).toLocaleString('nl-NL')} />} icon={Share2} delay={500} />}
-                  {totalShares === 0 && totalSaved > 0 && <KpiCard label="Opgeslagen" value={<AnimatedNumber value={totalSaved} delay={500} formatter={n => Math.round(n).toLocaleString('nl-NL')} />} icon={Bookmark} delay={500} />}
+                  {totalShares > 0 && <KpiCard label={t('organisch.stat.shares')} value={<AnimatedNumber value={totalShares} delay={500} formatter={n => Math.round(n).toLocaleString('nl-NL')} />} icon={Share2} delay={500} />}
+                  {totalShares === 0 && totalSaved > 0 && <KpiCard label={t('organisch.stat.saved')} value={<AnimatedNumber value={totalSaved} delay={500} formatter={n => Math.round(n).toLocaleString('nl-NL')} />} icon={Bookmark} delay={500} />}
                   {totalShares === 0 && totalSaved === 0 && summary.profile_views > 0 && (
-                    <KpiCard label="Profielbezoeken" value={<AnimatedNumber value={summary.profile_views} delay={500} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />} icon={Users} delay={500} />
+                    <KpiCard label={t('organisch.stat.profileViews')} value={<AnimatedNumber value={summary.profile_views} delay={500} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />} icon={Users} delay={500} />
                   )}
                 </div>
 
@@ -245,13 +247,13 @@ export default function MetaOrganischPage() {
                   {topPost ? (
                     <div className="stat-card border-l-4 border-l-pink-500 flex flex-col">
                       <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">
-                        Beste Post Deze Periode
+                        {t('organisch.bestPost')}
                       </p>
                       <p className="text-foreground font-medium text-sm mb-5 leading-relaxed flex-1">{topPost.caption}</p>
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         {topPost.reach > 0 && (
                           <div className="bg-[var(--border)]/30 rounded-lg p-3">
-                            <p className="text-muted-foreground text-xs mb-1">Bereik</p>
+                            <p className="text-muted-foreground text-xs mb-1">{t('organisch.stat.reach')}</p>
                             <p className="text-foreground font-bold text-xl">{fmtK(topPost.reach)}</p>
                           </div>
                         )}
@@ -260,12 +262,12 @@ export default function MetaOrganischPage() {
                           <p className="text-foreground font-bold text-xl">{fmt(topPost.likes)}</p>
                         </div>
                         <div className="bg-[var(--border)]/30 rounded-lg p-3">
-                          <p className="text-muted-foreground text-xs mb-1">Reacties</p>
+                          <p className="text-muted-foreground text-xs mb-1">{t('organisch.stat.comments')}</p>
                           <p className="text-foreground font-bold text-xl">{fmt(topPost.comments)}</p>
                         </div>
                         {topPost.engagement_rate > 0 && (
                           <div className="bg-accent/10 rounded-lg p-3">
-                            <p className="text-muted-foreground text-xs mb-1">Engagement</p>
+                            <p className="text-muted-foreground text-xs mb-1">{t('organisch.stat.engagement')}</p>
                             <p className="text-accent font-bold text-xl">{fmt(topPost.engagement_rate, 1)}%</p>
                           </div>
                         )}
@@ -282,7 +284,7 @@ export default function MetaOrganischPage() {
                   {/* Interactions chart */}
                   {chartHasData ? (
                     <div className="stat-card fade-in-up" style={{ animationDelay: '200ms' }}>
-                      <p className="text-sm font-bold mb-6" style={{ color: 'var(--text-primary)' }}>Interacties per Type</p>
+                      <p className="text-sm font-bold mb-6" style={{ color: 'var(--text-primary)' }}>{t('organisch.interactions')}</p>
                       <div className="[&_.recharts-surface]:bg-transparent">
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={chartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }} barSize={56}>
@@ -318,12 +320,12 @@ export default function MetaOrganischPage() {
                 {/* Posts table */}
                 <div>
                   <div className="mb-4">
-                    <p className="text-foreground font-bold text-xl">Posts in Periode</p>
+                    <p className="text-foreground font-bold text-xl">{t('organisch.recentPosts')}</p>
                     <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · {posts.length} post{posts.length !== 1 ? 's' : ''}</p>
                   </div>
 
                   {posts.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Geen posts gepubliceerd in deze periode.</p>
+                    <p className="text-muted-foreground text-sm">{t('organisch.noData')}</p>
                   ) : (
                     <div className="stat-card p-0 overflow-hidden">
                       <table className="w-full text-sm">
@@ -331,12 +333,12 @@ export default function MetaOrganischPage() {
                           <tr className="border-b border-[var(--border)]">
                             <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">Caption</th>
                             <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">Type</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Bereik</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Likes</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Reacties</th>
-                            {totalShares > 0 && <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Shares</th>}
-                            {totalSaved  > 0 && <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">Opgesl.</th>}
-                            <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">Datum</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.reach')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.likes')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.comments')}</th>
+                            {totalShares > 0 && <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.shares')}</th>}
+                            {totalSaved  > 0 && <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.saved')}</th>}
+                            <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">{t('organisch.table.date')}</th>
                           </tr>
                         </thead>
                         <tbody>

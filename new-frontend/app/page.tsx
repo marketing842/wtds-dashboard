@@ -22,6 +22,7 @@ import {
 } from 'recharts'
 
 import { apiFetch } from '@/lib/api'
+import { useLanguage } from '@/lib/language-context'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -54,6 +55,7 @@ interface ChannelErrors {
 export default function OverviewPage() {
   const { startDate, endDate } = useDateRange()
   const { resolvedTheme } = useTheme()
+  const { t: tr } = useLanguage()
   const isDark = resolvedTheme !== 'light'
 
   // Chart color tokens — theme-aware
@@ -203,7 +205,7 @@ export default function OverviewPage() {
     <div className="flex h-screen bg-bg">
       <Sidebar />
       <div className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <Header title="Overzicht" description="Cross-channel performance overview" />
+        <Header title={tr('dashboard.title')} description={tr('dashboard.desc')} />
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-8 page-in">
@@ -221,7 +223,7 @@ export default function OverviewPage() {
                   <div className="rounded-xl p-4 mb-6 flex gap-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
                     <span className="text-red-400 text-lg flex-shrink-0">⚠</span>
                     <div>
-                      <p className="text-red-700 dark:text-red-300 text-sm font-semibold mb-1">Some channels could not load data for this period</p>
+                      <p className="text-red-700 dark:text-red-300 text-sm font-semibold mb-1">{tr('dashboard.errorChannels')}</p>
                       <ul className="text-red-700 dark:text-red-400 text-xs space-y-0.5">
                         {errorEntries.map(([ch, msg]) => (
                           <li key={ch} className="capitalize">{ch}: {msg}</li>
@@ -236,25 +238,25 @@ export default function OverviewPage() {
                     {/* Cross-channel KPIs */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                       <StatCard
-                        label="Total Spend"
+                        label={tr('dashboard.stat.totalSpend')}
                         value={<AnimatedNumber value={totalSpend} delay={0}   formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />}
                         change={pctChg(totalSpend, prevTotalSpend) != null ? { value: Math.abs(pctChg(totalSpend, prevTotalSpend)!), isPositive: pctChg(totalSpend, prevTotalSpend)! <= 0 } : undefined}
                         icon={Euro} delay={0}
                       />
                       <StatCard
-                        label="Total Leads"
+                        label={tr('dashboard.stat.totalLeads')}
                         value={<AnimatedNumber value={totalLeads} delay={100} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                         change={pctChg(totalLeads, prevTotalLeads) != null ? { value: Math.abs(pctChg(totalLeads, prevTotalLeads)!), isPositive: pctChg(totalLeads, prevTotalLeads)! >= 0 } : undefined}
                         icon={Target} delay={100}
                       />
                       <StatCard
-                        label="Avg CPL"
+                        label={tr('dashboard.stat.avgCpl')}
                         value={avgCpl !== null ? <AnimatedNumber value={avgCpl} delay={200} formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} /> : '—'}
                         change={avgCpl !== null && prevAvgCpl !== null && pctChg(avgCpl, prevAvgCpl) != null ? { value: Math.abs(pctChg(avgCpl, prevAvgCpl)!), isPositive: pctChg(avgCpl, prevAvgCpl)! <= 0 } : undefined}
                         icon={Target} delay={200}
                       />
                       <StatCard
-                        label="Total Impressions"
+                        label={tr('dashboard.stat.totalImpressions')}
                         value={<AnimatedNumber value={totalImpressions} delay={300} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                         change={pctChg(totalImpressions, prevTotalImpressions) != null ? { value: Math.abs(pctChg(totalImpressions, prevTotalImpressions)!), isPositive: pctChg(totalImpressions, prevTotalImpressions)! >= 0 } : undefined}
                         icon={Eye} delay={300}
@@ -274,7 +276,7 @@ export default function OverviewPage() {
                         </div>
                         {gAds ? (
                           <div className="space-y-2.5">
-                            {([['Spend', fmtEur(gAds.cost)], ['Clicks', fmt(gAds.clicks, 0)], ['Conversions', fmt(gAds.conversions, 0)], ['CTR', `${fmt(gAds.ctr)}%`]] as [string, string][]).map(([k, v]) => (
+                            {([[tr('dashboard.channelLabel.spend'), fmtEur(gAds.cost)], [tr('dashboard.channelLabel.clicks'), fmt(gAds.clicks, 0)], [tr('dashboard.channelLabel.conversions'), fmt(gAds.conversions, 0)], [tr('dashboard.channelLabel.ctr'), `${fmt(gAds.ctr)}%`]] as [string, string][]).map(([k, v]) => (
                               <div key={k} className="flex justify-between items-center">
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k}</span>
                                 <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{v}</span>
@@ -284,7 +286,7 @@ export default function OverviewPage() {
                         ) : loadingChannels.gAds ? (
                           <div className="space-y-2.5">{[...Array(4)].map((_, i) => <div key={i} className="h-3 skeleton-shimmer" />)}</div>
                         ) : (
-                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>No data for this period</p>
+                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>{tr('dashboard.noData')}</p>
                         )}
                       </div>
 
@@ -299,7 +301,7 @@ export default function OverviewPage() {
                         </div>
                         {meta ? (
                           <div className="space-y-2.5">
-                            {([['Spend', fmtEur(meta.spend)], ['Clicks', fmt(meta.clicks, 0)], [meta.leads > 0 ? 'Leads' : 'Purchases', fmt(meta.leads > 0 ? meta.leads : meta.purchases, 0)], ['CTR', `${fmt(meta.ctr)}%`]] as [string, string][]).map(([k, v]) => (
+                            {([[tr('dashboard.channelLabel.spend'), fmtEur(meta.spend)], [tr('dashboard.channelLabel.clicks'), fmt(meta.clicks, 0)], [meta.leads > 0 ? tr('dashboard.channelLabel.leads') : tr('dashboard.channelLabel.purchases'), fmt(meta.leads > 0 ? meta.leads : meta.purchases, 0)], [tr('dashboard.channelLabel.ctr'), `${fmt(meta.ctr)}%`]] as [string, string][]).map(([k, v]) => (
                               <div key={k} className="flex justify-between items-center">
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k}</span>
                                 <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{v}</span>
@@ -309,7 +311,7 @@ export default function OverviewPage() {
                         ) : loadingChannels.meta ? (
                           <div className="space-y-2.5">{[...Array(4)].map((_, i) => <div key={i} className="h-3 skeleton-shimmer" />)}</div>
                         ) : (
-                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>No data for this period</p>
+                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>{tr('dashboard.noData')}</p>
                         )}
                       </div>
 
@@ -324,7 +326,7 @@ export default function OverviewPage() {
                         </div>
                         {klaviyo?.current ? (
                           <div className="space-y-2.5">
-                            {([['Delivered', fmt(klaviyo.current.delivered, 0)], ['Open Rate', `${fmt(klaviyo.current.open_rate)}%`], ['CTOR', `${fmt(klaviyo.current.ctor)}%`]] as [string, string][]).map(([k, v]) => (
+                            {([[tr('dashboard.channelLabel.delivered'), fmt(klaviyo.current.delivered, 0)], [tr('dashboard.channelLabel.openRate'), `${fmt(klaviyo.current.open_rate)}%`], ['CTOR', `${fmt(klaviyo.current.ctor)}%`]] as [string, string][]).map(([k, v]) => (
                               <div key={k} className="flex justify-between items-center">
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k}</span>
                                 <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{v}</span>
@@ -334,7 +336,7 @@ export default function OverviewPage() {
                         ) : loadingChannels.klaviyo ? (
                           <div className="space-y-2.5">{[...Array(3)].map((_, i) => <div key={i} className="h-3 skeleton-shimmer" />)}</div>
                         ) : (
-                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>No data for this period</p>
+                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>{tr('dashboard.noData')}</p>
                         )}
                       </div>
 
@@ -349,7 +351,7 @@ export default function OverviewPage() {
                         </div>
                         {gsc ? (
                           <div className="space-y-2.5">
-                            {([['Clicks', fmt(gsc.clicks, 0)], ['Avg Position', fmt(gsc.position)], ['CTR', `${fmt(gsc.ctr)}%`]] as [string, string][]).map(([k, v]) => (
+                            {([[tr('dashboard.channelLabel.clicks'), fmt(gsc.clicks, 0)], [tr('dashboard.channelLabel.avgPosition'), fmt(gsc.position)], [tr('dashboard.channelLabel.ctr'), `${fmt(gsc.ctr)}%`]] as [string, string][]).map(([k, v]) => (
                               <div key={k} className="flex justify-between items-center">
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k}</span>
                                 <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{v}</span>
@@ -359,7 +361,7 @@ export default function OverviewPage() {
                         ) : loadingChannels.gsc ? (
                           <div className="space-y-2.5">{[...Array(3)].map((_, i) => <div key={i} className="h-3 skeleton-shimmer" />)}</div>
                         ) : (
-                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>No data for this period</p>
+                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>{tr('dashboard.noData')}</p>
                         )}
                       </div>
                     </div>
