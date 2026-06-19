@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTheme } from 'next-themes'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { useDateRange } from '@/lib/date-range-context'
@@ -86,6 +87,13 @@ function KpiCard({ label, value, sub, icon: Icon, accent = false, delay = 0 }: {
 
 export default function MetaOrganischPage() {
   const { startDate, endDate } = useDateRange()
+  const { resolvedTheme } = useTheme()
+  const isDark      = resolvedTheme !== 'light'
+  const tooltipBg   = isDark ? '#1A1D27' : '#FFFFFF'
+  const tooltipBdr  = isDark ? '#2E3350' : '#E2E6F0'
+  const tooltipText = isDark ? '#F0F2FF' : '#111827'
+  const chartTick   = isDark ? '#8B92A9' : '#9CA3AF'
+
   const [summary, setSummary] = useState<any>(null)
   const [posts, setPosts]     = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -171,20 +179,25 @@ export default function MetaOrganischPage() {
             {!loading && !error && summary && (
               <>
                 {/* Account header */}
-                <div className="stat-card mb-8 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
-                    <Camera className="w-6 h-6 text-white" />
+                <div className="stat-card mb-8 flex items-center gap-4 fade-in-up">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0 spin-on-hover cursor-pointer"
+                    style={{ boxShadow: '0 4px 20px rgba(236,72,153,0.4)', transition: 'box-shadow 300ms ease' }}>
+                    <Camera className="w-7 h-7 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-foreground font-bold text-lg">@{summary.username || summary.name}</p>
-                    <p className="text-muted-foreground text-sm">{fmtK(summary.followers)} followers · {fmt(summary.media_count)} posts totaal</p>
+                    <p className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>@{summary.username || summary.name}</p>
+                    <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      <AnimatedNumber value={summary.followers} delay={200} formatter={n => n >= 1000 ? `${(n/1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />
+                      {' '}followers · {fmt(summary.media_count)} posts totaal
+                    </p>
                   </div>
                   {summary.new_followers !== 0 && (
-                    <div className="text-right">
+                    <div className="text-right badge-pop">
                       <p className={`text-2xl font-bold ${summary.new_followers >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {summary.new_followers > 0 ? '+' : ''}{fmt(summary.new_followers)}
+                        {summary.new_followers > 0 ? '+' : ''}
+                        <AnimatedNumber value={Math.abs(summary.new_followers)} delay={400} formatter={n => Math.round(n).toLocaleString('nl-NL')} />
                       </p>
-                      <p className="text-muted-foreground text-xs">nieuwe volgers</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>nieuwe volgers</p>
                     </div>
                   )}
                 </div>
@@ -268,22 +281,33 @@ export default function MetaOrganischPage() {
 
                   {/* Interactions chart */}
                   {chartHasData ? (
-                    <div className="stat-card">
-                      <p className="text-sm font-semibold text-foreground mb-6">Interacties per Type</p>
+                    <div className="stat-card fade-in-up" style={{ animationDelay: '200ms' }}>
+                      <p className="text-sm font-bold mb-6" style={{ color: 'var(--text-primary)' }}>Interacties per Type</p>
                       <div className="[&_.recharts-surface]:bg-transparent">
                         <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={chartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }} barSize={60}>
-                            <XAxis dataKey="week" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <BarChart data={chartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }} barSize={56}>
+                            <XAxis dataKey="week" tick={{ fontSize: 11, fill: chartTick }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: chartTick }} axisLine={false} tickLine={false} allowDecimals={false} />
                             <Tooltip
-                              contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                              labelStyle={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: 4 }}
-                              itemStyle={{ color: 'var(--text-primary)' }}
+                              contentStyle={{
+                                background: tooltipBg,
+                                border: `1px solid ${tooltipBdr}`,
+                                borderRadius: 10,
+                                fontSize: 12,
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+                                padding: '10px 14px',
+                              }}
+                              labelStyle={{ color: tooltipText, fontWeight: 700, marginBottom: 6, fontSize: 13 }}
+                              itemStyle={{ color: tooltipText, padding: '2px 0' }}
+                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
                             />
-                            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                            {totalComments > 0 && <Bar dataKey="comments" name="Reacties"   stackId="a" fill="#3b82f6" radius={[0,0,0,0]} />}
-                            {totalSaved  > 0 && <Bar dataKey="saved"    name="Opgeslagen" stackId="a" fill="#f59e0b" radius={[0,0,0,0]} />}
-                            {totalShares > 0 && <Bar dataKey="shares"   name="Shares"     stackId="a" fill="#FF4D00" radius={[4,4,0,0]} />}
+                            <Legend
+                              wrapperStyle={{ fontSize: 12, paddingTop: 10, color: chartTick }}
+                              iconType="circle" iconSize={8}
+                            />
+                            {totalComments > 0 && <Bar dataKey="comments" name="Reacties"   stackId="a" fill="#3b82f6" radius={[0,0,0,0]} animationDuration={1200} animationBegin={100} />}
+                            {totalSaved  > 0 && <Bar dataKey="saved"    name="Opgeslagen" stackId="a" fill="#f59e0b" radius={[0,0,0,0]} animationDuration={1200} animationBegin={200} />}
+                            {totalShares > 0 && <Bar dataKey="shares"   name="Shares"     stackId="a" fill="#FF4D00" radius={[4,4,0,0]} animationDuration={1200} animationBegin={300} />}
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
@@ -319,7 +343,8 @@ export default function MetaOrganischPage() {
                           {posts.map((post, i) => {
                             const badge = TYPE_BADGE[post.type] ?? TYPE_BADGE.IMAGE
                             return (
-                              <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--border)]/50 transition-colors">
+                              <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--border)]/50 transition-colors fade-in-up"
+                                style={{ animationDelay: `${i * 40}ms` }}>
                                 <td className="px-5 py-3 text-foreground max-w-xs truncate">{post.caption}</td>
                                 <td className="px-4 py-3">
                                   <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${badge.color}`}>

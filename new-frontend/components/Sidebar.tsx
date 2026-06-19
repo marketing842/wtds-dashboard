@@ -51,11 +51,12 @@ export function Sidebar() {
             }}>
               WHAT THE
             </span>
-            <span style={{
+            <span className="float" style={{
               fontFamily: "'Barlow Condensed', sans-serif",
               fontWeight: 900, fontSize: '1.7rem',
               color: 'var(--accent)', lineHeight: 1,
               margin: '0 3px',
+              display: 'inline-block',
             }}>
               *
             </span>

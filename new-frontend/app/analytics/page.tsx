@@ -182,7 +182,7 @@ export default function AnalyticsPage() {
                             itemStyle={{ color: '#FF4D00', fontSize: 12 }}
                             formatter={(v: number) => [fmt(v), 'Sessions']}
                           />
-                          <Bar dataKey="sessions" fill="#FF4D00" radius={[0, 4, 4, 0]} />
+                          <Bar dataKey="sessions" fill="#FF4D00" radius={[0, 4, 4, 0]} animationDuration={1200} animationBegin={100} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>

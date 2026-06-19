@@ -160,12 +160,33 @@
     border-radius: 12px;
     padding:       1.5rem;
     box-shadow:    var(--shadow-card);
+    position:      relative;
+    overflow:      hidden;
   }
   .stat-card:hover {
     box-shadow:    var(--shadow-card-hover), 0 0 0 1px var(--accent-border);
-    transform:     translateY(-2px);
+    transform:     translateY(-3px) scale(1.012);
     border-color:  var(--accent-border);
   }
+
+  /* ── Shimmer sweep on card hover ── */
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.06) 50%,
+      transparent 60%
+    );
+    transition: left 0.55s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .stat-card:hover::before { left: 160%; }
   .card-accent { border-top: 2px solid var(--accent); }
 
   /* ── Channel accent borders (left side) ── */
@@ -274,6 +295,20 @@
     50%       { box-shadow: 0 4px 24px rgba(255,77,0,0.65); }
   }
   .accent-glow { animation: accentGlow 3s ease-in-out infinite; }
+
+  /* ── Spin on hover (Instagram gradient ring, etc.) ── */
+  @keyframes spinSlow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .spin-on-hover:hover { animation: spinSlow 8s linear infinite; }
+
+  /* ── Float micro-animation (brand elements) ── */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-4px); }
+  }
+  .float { animation: float 3s ease-in-out infinite; }
 
   /* ── Page content entrance ── */
   @keyframes pageIn {
