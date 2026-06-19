@@ -211,77 +211,70 @@ export default function MetaOrganischPage() {
                   )}
                 </div>
 
-                {/* Best post */}
-                {topPost && (
-                  <div className="stat-card border-l-4 border-l-pink-500 mb-8">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">
-                      Beste Post Deze Periode
-                    </p>
-                    <p className="text-foreground font-medium text-sm mb-5 leading-relaxed">{topPost.caption}</p>
-                    <div className="flex flex-wrap gap-6 mb-4">
-                      {topPost.reach > 0 && (
-                        <div>
-                          <p className="text-muted-foreground text-xs mb-0.5">Bereik</p>
-                          <p className="text-foreground font-bold text-xl">{fmtK(topPost.reach)}</p>
+                {/* Best post + Chart side by side */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  {/* Best post */}
+                  {topPost ? (
+                    <div className="stat-card border-l-4 border-l-pink-500 flex flex-col">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">
+                        Beste Post Deze Periode
+                      </p>
+                      <p className="text-foreground font-medium text-sm mb-5 leading-relaxed flex-1">{topPost.caption}</p>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        {topPost.reach > 0 && (
+                          <div className="bg-[var(--border)]/30 rounded-lg p-3">
+                            <p className="text-muted-foreground text-xs mb-1">Bereik</p>
+                            <p className="text-foreground font-bold text-xl">{fmtK(topPost.reach)}</p>
+                          </div>
+                        )}
+                        <div className="bg-[var(--border)]/30 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs mb-1">Likes</p>
+                          <p className="text-foreground font-bold text-xl">{fmt(topPost.likes)}</p>
                         </div>
-                      )}
-                      <div>
-                        <p className="text-muted-foreground text-xs mb-0.5">Likes</p>
-                        <p className="text-foreground font-bold text-xl">{fmt(topPost.likes)}</p>
+                        <div className="bg-[var(--border)]/30 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs mb-1">Reacties</p>
+                          <p className="text-foreground font-bold text-xl">{fmt(topPost.comments)}</p>
+                        </div>
+                        {topPost.engagement_rate > 0 && (
+                          <div className="bg-accent/10 rounded-lg p-3">
+                            <p className="text-muted-foreground text-xs mb-1">Engagement</p>
+                            <p className="text-accent font-bold text-xl">{fmt(topPost.engagement_rate, 1)}%</p>
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs mb-0.5">Reacties</p>
-                        <p className="text-foreground font-bold text-xl">{fmt(topPost.comments)}</p>
+                      <div className="flex items-center gap-3">
+                        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${(TYPE_BADGE[topPost.type] ?? TYPE_BADGE.IMAGE).color}`}>
+                          {(TYPE_BADGE[topPost.type] ?? TYPE_BADGE.IMAGE).label}
+                        </span>
+                        <span className="text-muted-foreground text-xs">{formatDate(topPost.timestamp)}</span>
                       </div>
-                      {topPost.shares > 0 && (
-                        <div>
-                          <p className="text-muted-foreground text-xs mb-0.5">Shares</p>
-                          <p className="text-foreground font-bold text-xl">{fmt(topPost.shares)}</p>
-                        </div>
-                      )}
-                      {topPost.saved > 0 && (
-                        <div>
-                          <p className="text-muted-foreground text-xs mb-0.5">Opgeslagen</p>
-                          <p className="text-foreground font-bold text-xl">{fmt(topPost.saved)}</p>
-                        </div>
-                      )}
-                      {topPost.engagement_rate > 0 && (
-                        <div>
-                          <p className="text-muted-foreground text-xs mb-0.5">Engagement</p>
-                          <p className="text-accent font-bold text-xl">{fmt(topPost.engagement_rate, 1)}%</p>
-                        </div>
-                      )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${(TYPE_BADGE[topPost.type] ?? TYPE_BADGE.IMAGE).color}`}>
-                        {(TYPE_BADGE[topPost.type] ?? TYPE_BADGE.IMAGE).label}
-                      </span>
-                      <span className="text-muted-foreground text-xs">{formatDate(topPost.timestamp)}</span>
-                    </div>
-                  </div>
-                )}
+                  ) : <div />}
 
-                {/* Interactions chart — only render when there's real data */}
-                {chartHasData && (
-                  <div className="stat-card mb-8">
-                    <p className="text-sm font-semibold text-foreground mb-6">Interacties per Type</p>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={weeklyChart} margin={{ top: 4, right: 8, left: -10, bottom: 0 }} style={{ background: 'transparent' }}>
-                        <XAxis dataKey="week" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                        <Tooltip
-                          contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-                          labelStyle={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: 4 }}
-                          itemStyle={{ color: 'var(--text-primary)' }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                        {totalComments > 0 && <Bar dataKey="comments" name="Reacties"   stackId="a" fill="#3b82f6" radius={[0,0,0,0]} />}
-                        {totalSaved  > 0 && <Bar dataKey="saved"    name="Opgeslagen" stackId="a" fill="#f59e0b" radius={[0,0,0,0]} />}
-                        {totalShares > 0 && <Bar dataKey="shares"   name="Shares"     stackId="a" fill="#FF4D00" radius={[4,4,0,0]} />}
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
+                  {/* Interactions chart */}
+                  {chartHasData ? (
+                    <div className="stat-card">
+                      <p className="text-sm font-semibold text-foreground mb-6">Interacties per Type</p>
+                      <div className="[&_.recharts-surface]:bg-transparent">
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={weeklyChart} margin={{ top: 4, right: 8, left: -10, bottom: 0 }} barSize={60}>
+                            <XAxis dataKey="week" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                            <Tooltip
+                              contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                              labelStyle={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: 4 }}
+                              itemStyle={{ color: 'var(--text-primary)' }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                            {totalComments > 0 && <Bar dataKey="comments" name="Reacties"   stackId="a" fill="#3b82f6" radius={[0,0,0,0]} />}
+                            {totalSaved  > 0 && <Bar dataKey="saved"    name="Opgeslagen" stackId="a" fill="#f59e0b" radius={[0,0,0,0]} />}
+                            {totalShares > 0 && <Bar dataKey="shares"   name="Shares"     stackId="a" fill="#FF4D00" radius={[4,4,0,0]} />}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  ) : <div />}
+                </div>
 
                 {/* Posts table */}
                 <div>
