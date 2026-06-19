@@ -148,9 +148,14 @@ app.get('/api/klaviyo/summary', async (req, res) => {
     const data = await cached(key, () => getKlaviyoSummary(start, end, compare_start, compare_end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
+    const status = err.response?.status;
+    if (status === 400) {
+      console.warn('[klaviyo/summary] date range rejected by Klaviyo, returning empty');
+      return res.json({ current: null, previous: null });
+    }
     const detail = err.response?.data ?? err.message;
     console.error('[klaviyo/summary]', detail);
-    res.status(err.response?.status ?? 500).json({ error: err.message, detail });
+    res.status(status ?? 500).json({ error: err.message, detail });
   }
 });
 
@@ -163,6 +168,10 @@ app.get('/api/klaviyo/flows', async (req, res) => {
     const data = await cached(`kf_${req.client.id}_${start}_${end}`, () => getKlaviyoFlows(start, end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
+    if (err.response?.status === 400) {
+      console.warn('[klaviyo/flows] date range rejected, returning empty');
+      return res.json([]);
+    }
     const detail = err.response?.data ?? err.message;
     console.error('[klaviyo/flows]', detail);
     res.status(err.response?.status ?? 500).json({ error: err.message, detail });
@@ -178,6 +187,10 @@ app.get('/api/klaviyo/campaigns', async (req, res) => {
     const data = await cached(`kc_${req.client.id}_${start}_${end}`, () => getKlaviyoCampaigns(start, end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
+    if (err.response?.status === 400) {
+      console.warn('[klaviyo/campaigns] date range rejected, returning empty');
+      return res.json([]);
+    }
     const detail = err.response?.data ?? err.message;
     console.error('[klaviyo/campaigns]', detail);
     res.status(err.response?.status ?? 500).json({ error: err.message, detail });
@@ -255,6 +268,8 @@ app.get('/api/google-ads/keywords', async (req, res) => {
 
 // ── Meta Ads ─────────────────────────────────────────────────
 
+const META_EMPTY_SUMMARY = { impressions: 0, clicks: 0, spend: 0, reach: 0, cpc: 0, ctr: 0, purchases: 0, purchase_value: 0, roas: 0, leads: 0 };
+
 app.get('/api/meta/summary', async (req, res) => {
   try {
     const { start, end } = req.query;
@@ -265,6 +280,11 @@ app.get('/api/meta/summary', async (req, res) => {
     res.json(data);
   } catch (err) {
     const fb = err.response?.data?.error;
+    // #3018 = start date beyond 37 months; return empty data silently
+    if (fb?.code === 3018) {
+      console.warn('[meta/summary] date range beyond 37 months, returning empty');
+      return res.json(META_EMPTY_SUMMARY);
+    }
     const msg = fb?.message ?? err.message;
     console.error('[meta/summary]', fb ?? err.message);
     res.status(500).json({ error: msg, code: fb?.code, detail: err.response?.data });
@@ -281,6 +301,10 @@ app.get('/api/meta/campaigns', async (req, res) => {
     res.json(data);
   } catch (err) {
     const fb = err.response?.data?.error;
+    if (fb?.code === 3018) {
+      console.warn('[meta/campaigns] date range beyond 37 months, returning empty');
+      return res.json([]);
+    }
     const msg = fb?.message ?? err.message;
     console.error('[meta/campaigns]', fb ?? err.message);
     res.status(500).json({ error: msg, code: fb?.code, detail: err.response?.data });
@@ -297,6 +321,10 @@ app.get('/api/meta/creatives', async (req, res) => {
     res.json(data);
   } catch (err) {
     const fb = err.response?.data?.error;
+    if (fb?.code === 3018) {
+      console.warn('[meta/creatives] date range beyond 37 months, returning empty');
+      return res.json([]);
+    }
     const msg = fb?.message ?? err.message;
     console.error('[meta/creatives]', fb ?? err.message);
     res.status(500).json({ error: msg, code: fb?.code, detail: err.response?.data });
