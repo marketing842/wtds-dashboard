@@ -80,6 +80,10 @@ export default function MetaPage() {
   const active = campaigns.filter(c => c.status === 'ACTIVE')
   const inactive = campaigns.filter(c => c.status !== 'ACTIVE')
 
+  // Detect leads vs purchase campaign type for adaptive secondary KPIs
+  const isLeadsCampaign = cur ? (cur.leads > 0 || cur.purchase_value === 0) : false
+  const cpl = cur && cur.leads > 0 && cur.spend > 0 ? cur.spend / cur.leads : 0
+
   return (
     <div className="flex h-screen bg-bg">
       <Sidebar />
@@ -136,13 +140,17 @@ export default function MetaPage() {
                   />
                 </div>
 
-                {/* Secondary KPIs */}
+                {/* Secondary KPIs — adapts to leads vs purchase campaigns */}
                 <div className="grid grid-cols-4 gap-6 mb-8">
                   {[
                     { label: 'CTR', value: `${fmt(cur.ctr)}%` },
                     { label: 'Avg. CPC', value: fmtEur(cur.cpc) },
-                    { label: 'ROAS', value: cur.roas > 0 ? `${fmt(cur.roas)}x` : '—' },
-                    { label: 'Revenue', value: cur.purchase_value > 0 ? fmtEur(cur.purchase_value) : '—' },
+                    isLeadsCampaign
+                      ? { label: 'Cost per Lead', value: cpl > 0 ? fmtEur(cpl) : '—' }
+                      : { label: 'ROAS', value: cur.roas > 0 ? `${fmt(cur.roas)}x` : '—' },
+                    isLeadsCampaign
+                      ? { label: 'Total Leads', value: fmt(cur.leads, 0) }
+                      : { label: 'Revenue', value: cur.purchase_value > 0 ? fmtEur(cur.purchase_value) : '—' },
                   ].map(m => (
                     <div key={m.label} className="stat-card flex items-center justify-between py-4">
                       <p className="text-muted-foreground text-sm font-medium">{m.label}</p>
@@ -216,12 +224,17 @@ export default function MetaPage() {
                                 <p className="text-emerald-700 dark:text-emerald-300 text-sm font-bold">{fmt(ad.avg_watch_sec)}s</p>
                               </div>
                             )}
-                            {ad.roas > 0 && (
+                            {ad.roas > 0 ? (
                               <div>
                                 <p className="text-muted-foreground text-xs mb-0.5">ROAS</p>
                                 <p className="text-accent text-sm font-bold">{fmt(ad.roas)}x</p>
                               </div>
-                            )}
+                            ) : ad.leads > 0 && ad.spend > 0 ? (
+                              <div>
+                                <p className="text-muted-foreground text-xs mb-0.5">CPL</p>
+                                <p className="text-accent text-sm font-bold">{fmtEur(ad.spend / ad.leads)}</p>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       ))}
@@ -262,7 +275,9 @@ export default function MetaPage() {
                               { label: 'CTR', value: `${fmt(c.ctr)}%` },
                               { label: 'Spend', value: fmtEur(c.spend) },
                               { label: c.leads > 0 ? 'Leads' : 'Purchases', value: String(c.leads > 0 ? c.leads : c.purchases) },
-                              { label: 'ROAS', value: c.roas > 0 ? `${fmt(c.roas)}x` : '—', accent: true },
+                              c.roas > 0
+                                ? { label: 'ROAS', value: `${fmt(c.roas)}x`, accent: true }
+                                : { label: c.leads > 0 ? 'CPL' : 'ROAS', value: c.leads > 0 && c.spend > 0 ? fmtEur(c.spend / c.leads) : '—', accent: true },
                             ].map(m => (
                               <div key={m.label}>
                                 <p className="text-muted-foreground text-xs mb-1">{m.label}</p>
