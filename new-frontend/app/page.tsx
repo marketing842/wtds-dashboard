@@ -211,19 +211,22 @@ export default function OverviewPage() {
               <>
                 {/* Loading bar at top — subtle, doesn't block content */}
                 {isAnyLoading && (
-                  <div className="h-0.5 w-full bg-white/5 rounded mb-6 overflow-hidden">
-                    <div className="h-full bg-accent animate-pulse rounded" style={{ width: '60%' }} />
+                  <div className="h-0.5 w-full rounded mb-6 overflow-hidden" style={{ background: 'var(--border)' }}>
+                    <div className="h-full bg-accent animate-pulse rounded" style={{ width: '60%', boxShadow: '0 0 8px rgba(255,77,0,0.5)' }} />
                   </div>
                 )}
 
                 {errorEntries.length > 0 && (
-                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
-                    <p className="text-red-700 dark:text-red-300 text-sm font-semibold mb-1">Some channels failed to load:</p>
-                    <ul className="text-red-700 dark:text-red-400 text-xs space-y-0.5">
-                      {errorEntries.map(([ch, msg]) => (
-                        <li key={ch}>{ch}: {msg}</li>
-                      ))}
-                    </ul>
+                  <div className="rounded-xl p-4 mb-6 flex gap-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <span className="text-red-400 text-lg flex-shrink-0">⚠</span>
+                    <div>
+                      <p className="text-red-700 dark:text-red-300 text-sm font-semibold mb-1">Some channels could not load data for this period</p>
+                      <ul className="text-red-700 dark:text-red-400 text-xs space-y-0.5">
+                        {errorEntries.map(([ch, msg]) => (
+                          <li key={ch} className="capitalize">{ch}: {msg}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 )}
 
@@ -260,90 +263,102 @@ export default function OverviewPage() {
                     {/* Channel summary cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                       {/* Google Ads */}
-                      <div className="stat-card channel-google">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#FF4D00' }}>Google Ads</p>
-                          {loadingChannels.gAds && <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />}
+                      <div className="stat-card channel-google fade-in-up-1">
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#FF4D00' }}>Google Ads</p>
+                          {loadingChannels.gAds
+                            ? <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />
+                            : <span className="w-2 h-2 rounded-full" style={{ background: gAds ? '#22C55E' : 'var(--text-subtle)', boxShadow: gAds ? '0 0 6px rgba(34,197,94,0.6)' : 'none' }} />
+                          }
                         </div>
                         {gAds ? (
                           <div className="space-y-2.5">
                             {([['Spend', fmtEur(gAds.cost)], ['Clicks', fmt(gAds.clicks, 0)], ['Conversions', fmt(gAds.conversions, 0)], ['CTR', `${fmt(gAds.ctr)}%`]] as [string, string][]).map(([k, v]) => (
                               <div key={k} className="flex justify-between items-center">
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k}</span>
-                                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{v}</span>
+                                <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{v}</span>
                               </div>
                             ))}
                           </div>
                         ) : loadingChannels.gAds ? (
-                          <div className="space-y-2.5">{[...Array(4)].map((_, i) => <div key={i} className="h-3 rounded animate-pulse" style={{ background: 'var(--border)' }} />)}</div>
+                          <div className="space-y-2.5">{[...Array(4)].map((_, i) => <div key={i} className="h-3 skeleton-shimmer" />)}</div>
                         ) : (
-                          <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>No data</p>
+                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>No data for this period</p>
                         )}
                       </div>
 
                       {/* Meta Ads */}
-                      <div className="stat-card channel-meta">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#4F7EFF' }}>Meta Ads</p>
-                          {loadingChannels.meta && <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />}
+                      <div className="stat-card channel-meta fade-in-up-2">
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#4F7EFF' }}>Meta Ads</p>
+                          {loadingChannels.meta
+                            ? <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />
+                            : <span className="w-2 h-2 rounded-full" style={{ background: meta ? '#22C55E' : 'var(--text-subtle)', boxShadow: meta ? '0 0 6px rgba(34,197,94,0.6)' : 'none' }} />
+                          }
                         </div>
                         {meta ? (
                           <div className="space-y-2.5">
-                            {([['Spend', fmtEur(meta.spend)], ['Clicks', fmt(meta.clicks, 0)], ['Purchases', fmt(meta.purchases, 0)], ['CTR', `${fmt(meta.ctr)}%`]] as [string, string][]).map(([k, v]) => (
+                            {([['Spend', fmtEur(meta.spend)], ['Clicks', fmt(meta.clicks, 0)], [meta.leads > 0 ? 'Leads' : 'Purchases', fmt(meta.leads > 0 ? meta.leads : meta.purchases, 0)], ['CTR', `${fmt(meta.ctr)}%`]] as [string, string][]).map(([k, v]) => (
                               <div key={k} className="flex justify-between items-center">
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k}</span>
-                                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{v}</span>
+                                <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{v}</span>
                               </div>
                             ))}
                           </div>
                         ) : loadingChannels.meta ? (
-                          <div className="space-y-2.5">{[...Array(4)].map((_, i) => <div key={i} className="h-3 rounded animate-pulse" style={{ background: 'var(--border)' }} />)}</div>
+                          <div className="space-y-2.5">{[...Array(4)].map((_, i) => <div key={i} className="h-3 skeleton-shimmer" />)}</div>
                         ) : (
-                          <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>No data</p>
+                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>No data for this period</p>
                         )}
                       </div>
 
                       {/* Email */}
-                      <div className="stat-card channel-email">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#10B981' }}>Email</p>
-                          {loadingChannels.klaviyo && <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />}
+                      <div className="stat-card channel-email fade-in-up-3">
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#10B981' }}>Email</p>
+                          {loadingChannels.klaviyo
+                            ? <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />
+                            : <span className="w-2 h-2 rounded-full" style={{ background: klaviyo?.current ? '#22C55E' : 'var(--text-subtle)', boxShadow: klaviyo?.current ? '0 0 6px rgba(34,197,94,0.6)' : 'none' }} />
+                          }
                         </div>
                         {klaviyo?.current ? (
                           <div className="space-y-2.5">
                             {([['Delivered', fmt(klaviyo.current.delivered, 0)], ['Open Rate', `${fmt(klaviyo.current.open_rate)}%`], ['CTOR', `${fmt(klaviyo.current.ctor)}%`]] as [string, string][]).map(([k, v]) => (
                               <div key={k} className="flex justify-between items-center">
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k}</span>
-                                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{v}</span>
+                                <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{v}</span>
                               </div>
                             ))}
                           </div>
                         ) : loadingChannels.klaviyo ? (
-                          <div className="space-y-2.5">{[...Array(3)].map((_, i) => <div key={i} className="h-3 rounded animate-pulse" style={{ background: 'var(--border)' }} />)}</div>
+                          <div className="space-y-2.5">{[...Array(3)].map((_, i) => <div key={i} className="h-3 skeleton-shimmer" />)}</div>
                         ) : (
-                          <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>No data</p>
+                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>No data for this period</p>
                         )}
                       </div>
 
                       {/* Search Console */}
-                      <div className="stat-card channel-search">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#8B5CF6' }}>Search Console</p>
-                          {loadingChannels.gsc && <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />}
+                      <div className="stat-card channel-search fade-in-up-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#8B5CF6' }}>Search Console</p>
+                          {loadingChannels.gsc
+                            ? <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />
+                            : <span className="w-2 h-2 rounded-full" style={{ background: gsc ? '#22C55E' : 'var(--text-subtle)', boxShadow: gsc ? '0 0 6px rgba(34,197,94,0.6)' : 'none' }} />
+                          }
                         </div>
                         {gsc ? (
                           <div className="space-y-2.5">
                             {([['Clicks', fmt(gsc.clicks, 0)], ['Avg Position', fmt(gsc.position)], ['CTR', `${fmt(gsc.ctr)}%`]] as [string, string][]).map(([k, v]) => (
                               <div key={k} className="flex justify-between items-center">
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k}</span>
-                                <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{v}</span>
+                                <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{v}</span>
                               </div>
                             ))}
                           </div>
                         ) : loadingChannels.gsc ? (
-                          <div className="space-y-2.5">{[...Array(3)].map((_, i) => <div key={i} className="h-3 rounded animate-pulse" style={{ background: 'var(--border)' }} />)}</div>
+                          <div className="space-y-2.5">{[...Array(3)].map((_, i) => <div key={i} className="h-3 skeleton-shimmer" />)}</div>
                         ) : (
-                          <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>No data</p>
+                          <p className="text-xs italic" style={{ color: 'var(--text-subtle)' }}>No data for this period</p>
                         )}
                       </div>
                     </div>
@@ -471,23 +486,32 @@ export default function OverviewPage() {
                     {/* Insights */}
                     {insights.length > 0 && (
                       <div>
-                        <p className="text-foreground font-semibold text-sm mb-4">Insights</p>
+                        <div className="flex items-center gap-2 mb-4">
+                          <p className="text-foreground font-bold text-base">Performance Insights</p>
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
+                            {insights.length} {insights.length === 1 ? 'insight' : 'insights'}
+                          </span>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {insights.map((ins, i) =>
                             ins.type === 'good' ? (
-                              <div key={i} className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 flex items-start gap-3">
-                                <span className="text-green-400 text-lg">✓</span>
+                              <div key={i} className="rounded-xl p-4 flex items-start gap-3 fade-in-up" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)' }}>
+                                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'rgba(34,197,94,0.15)' }}>
+                                  <span className="text-sm">✓</span>
+                                </div>
                                 <div>
-                                  <p className="text-green-700 dark:text-green-300 font-semibold text-sm">{ins.title}</p>
-                                  <p className="text-muted-foreground text-xs mt-1">{ins.detail}</p>
+                                  <p className="font-semibold text-sm mb-1" style={{ color: '#22C55E' }}>{ins.title}</p>
+                                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{ins.detail}</p>
                                 </div>
                               </div>
                             ) : (
-                              <div key={i} className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4 flex items-start gap-3">
-                                <span className="text-orange-400 text-lg">⚠</span>
+                              <div key={i} className="rounded-xl p-4 flex items-start gap-3 fade-in-up" style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.18)' }}>
+                                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'rgba(234,179,8,0.15)' }}>
+                                  <span className="text-sm">⚠</span>
+                                </div>
                                 <div>
-                                  <p className="text-orange-700 dark:text-orange-300 font-semibold text-sm">{ins.title}</p>
-                                  <p className="text-muted-foreground text-xs mt-1">{ins.detail}</p>
+                                  <p className="font-semibold text-sm mb-1" style={{ color: '#EAB308' }}>{ins.title}</p>
+                                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{ins.detail}</p>
                                 </div>
                               </div>
                             )

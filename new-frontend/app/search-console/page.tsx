@@ -13,6 +13,18 @@ function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
 }
 
+function positionStyle(pos: number): { color: string; fontWeight: number } {
+  if (pos <= 3)  return { color: '#22C55E', fontWeight: 700 }
+  if (pos <= 10) return { color: '#EAB308', fontWeight: 700 }
+  return { color: 'var(--text-muted)', fontWeight: 600 }
+}
+
+function positionBadge(pos: number) {
+  if (pos <= 3)  return '🥇'
+  if (pos <= 10) return '✦'
+  return null
+}
+
 function getPrevRange(start: string, end: string) {
   const s = new Date(start), e = new Date(end)
   const days = Math.round((e.getTime() - s.getTime()) / 86400000) + 1
@@ -134,7 +146,7 @@ export default function SearchConsolePage() {
                   <div>
                     <div className="mb-4">
                       <p className="text-foreground font-bold text-lg">Top Search Queries</p>
-                      <p className="text-muted-foreground text-sm mt-1">{startDate} → {endDate}</p>
+                      <p className="text-muted-foreground text-sm mt-1">{startDate} → {endDate} · <span style={{ color: '#22C55E' }}>🥇 top 3</span> · <span style={{ color: '#EAB308' }}>✦ top 10</span> · positie (lager = beter)</p>
                     </div>
 
                     <div className="stat-card p-0 overflow-hidden">
@@ -150,14 +162,22 @@ export default function SearchConsolePage() {
                         </thead>
                         <tbody>
                           {queries.length === 0 ? (
-                            <tr><td colSpan={5} className="text-center text-muted-foreground text-sm py-8">No data for this period.</td></tr>
+                            <tr><td colSpan={5} className="text-center text-sm py-10" style={{ color: 'var(--text-subtle)' }}>No search queries found for this period.</td></tr>
                           ) : queries.map((q, i) => (
-                            <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-white/5 transition-colors">
-                              <td className="px-4 py-3 text-foreground font-medium truncate max-w-[200px]">{q.query}</td>
-                              <td className="px-4 py-3 text-right text-foreground font-semibold">{q.clicks}</td>
-                              <td className="px-4 py-3 text-right text-muted-foreground">{q.impressions >= 1000 ? `${fmt(q.impressions / 1000)}K` : q.impressions}</td>
-                              <td className="px-4 py-3 text-right text-muted-foreground">{fmt(q.ctr)}%</td>
-                              <td className="px-4 py-3 text-right text-accent font-semibold">{fmt(q.position)}</td>
+                            <tr key={i} className="border-b border-[var(--border)] last:border-0 transition-colors" style={{ cursor: 'default' }}
+                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                            >
+                              <td className="px-4 py-3 font-medium truncate max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{q.query}</td>
+                              <td className="px-4 py-3 text-right font-bold" style={{ color: 'var(--text-primary)' }}>{q.clicks}</td>
+                              <td className="px-4 py-3 text-right" style={{ color: 'var(--text-muted)' }}>{q.impressions >= 1000 ? `${fmt(q.impressions / 1000)}K` : q.impressions}</td>
+                              <td className="px-4 py-3 text-right" style={{ color: 'var(--text-muted)' }}>{fmt(q.ctr)}%</td>
+                              <td className="px-4 py-3 text-right">
+                                <span style={positionStyle(q.position)}>
+                                  {positionBadge(q.position) && <span className="mr-1 text-[10px]">{positionBadge(q.position)}</span>}
+                                  {fmt(q.position)}
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -184,13 +204,23 @@ export default function SearchConsolePage() {
                         </thead>
                         <tbody>
                           {pages.length === 0 ? (
-                            <tr><td colSpan={4} className="text-center text-muted-foreground text-sm py-8">No data for this period.</td></tr>
+                            <tr><td colSpan={4} className="text-center text-sm py-10" style={{ color: 'var(--text-subtle)' }}>No page data found for this period.</td></tr>
                           ) : pages.map((p, i) => (
-                            <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-white/5 transition-colors">
-                              <td className="px-4 py-3 text-foreground font-medium truncate max-w-[220px]">{p.page}</td>
-                              <td className="px-4 py-3 text-right text-foreground font-semibold">{p.clicks}</td>
-                              <td className="px-4 py-3 text-right text-muted-foreground">{p.impressions >= 1000 ? `${fmt(p.impressions / 1000)}K` : p.impressions}</td>
-                              <td className="px-4 py-3 text-right text-accent font-semibold">{fmt(p.position)}</td>
+                            <tr key={i} className="border-b border-[var(--border)] last:border-0 transition-colors" style={{ cursor: 'default' }}
+                              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                            >
+                              <td className="px-4 py-3 font-medium truncate max-w-[220px]" style={{ color: 'var(--text-primary)' }}>
+                                {p.page.replace(/^https?:\/\/[^/]+/, '') || '/'}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold" style={{ color: 'var(--text-primary)' }}>{p.clicks}</td>
+                              <td className="px-4 py-3 text-right" style={{ color: 'var(--text-muted)' }}>{p.impressions >= 1000 ? `${fmt(p.impressions / 1000)}K` : p.impressions}</td>
+                              <td className="px-4 py-3 text-right">
+                                <span style={positionStyle(p.position)}>
+                                  {positionBadge(p.position) && <span className="mr-1 text-[10px]">{positionBadge(p.position)}</span>}
+                                  {fmt(p.position)}
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

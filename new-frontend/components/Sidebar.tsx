@@ -117,7 +117,7 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
+              className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
               style={active ? {
                 background: 'var(--accent)',
                 color: '#fff',
@@ -144,6 +144,12 @@ export function Sidebar() {
                 style={{ color: active ? 'rgba(255,255,255,0.9)' : 'inherit' }}
               />
               <span>{label}</span>
+              {active && (
+                <span
+                  className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ background: 'rgba(255,255,255,0.7)' }}
+                />
+              )}
             </Link>
           )
         })}
