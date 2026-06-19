@@ -32,45 +32,82 @@ function getPrevRange(start: string, end: string) {
   }
 }
 
+const MAX_ATTEMPTS = 4
+const RETRY_DELAY_MS = 6000
+
 export default function EmailPage() {
   const { startDate, endDate } = useDateRange()
   const [summary, setSummary] = useState<any>(null)
   const [flows, setFlows] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [slowLoad, setSlowLoad] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Show "taking longer than usual" message after 12 s of loading
   useEffect(() => {
-    const timer = setTimeout(async () => {
+    if (!loading) { setSlowLoad(false); return }
+    const t = setTimeout(() => setSlowLoad(true), 12000)
+    return () => clearTimeout(t)
+  }, [loading])
+
+  useEffect(() => {
+    let active = true
+
+    ;(async () => {
       setLoading(true)
       setError(null)
-      try {
-        const { compare_start, compare_end } = getPrevRange(startDate, endDate)
-        const [sRes, fRes] = await Promise.all([
-          apiFetch(`/api/klaviyo/summary?start=${startDate}&end=${endDate}&compare_start=${compare_start}&compare_end=${compare_end}`),
-          apiFetch(`/api/klaviyo/flows?start=${startDate}&end=${endDate}`),
-        ])
-        if (!sRes.ok) {
-          const body = await sRes.json().catch(() => ({}))
-          const detail = body?.error ?? `HTTP ${sRes.status}`
-          throw new Error(sRes.status === 429
-            ? 'Klaviyo rate limit hit — the backend will retry automatically. Please wait a moment and refresh.'
-            : detail)
-        }
-        if (!fRes.ok) {
-          const body = await fRes.json().catch(() => ({}))
-          throw new Error(body?.error ?? `Flows HTTP ${fRes.status}`)
-        }
-        const [s, f] = await Promise.all([sRes.json(), fRes.json()])
-        setSummary(s)
-        setFlows(f)
-      } catch (e: any) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    }, 600)
+      await new Promise(r => setTimeout(r, 600)) // debounce
+      if (!active) return
 
-    return () => clearTimeout(timer)
+      let lastErr = ''
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        if (attempt > 0) {
+          await new Promise(r => setTimeout(r, RETRY_DELAY_MS))
+          if (!active) return
+        }
+        try {
+          const { compare_start, compare_end } = getPrevRange(startDate, endDate)
+          const [sRes, fRes] = await Promise.all([
+            apiFetch(`/api/klaviyo/summary?start=${startDate}&end=${endDate}&compare_start=${compare_start}&compare_end=${compare_end}`),
+            apiFetch(`/api/klaviyo/flows?start=${startDate}&end=${endDate}`),
+          ])
+          if (!active) return
+
+          // Retry transparently on rate-limit or server error
+          const retryable =
+            (!sRes.ok && (sRes.status === 429 || sRes.status >= 500)) ||
+            (!fRes.ok && (fRes.status === 429 || fRes.status >= 500))
+          if (retryable && attempt < MAX_ATTEMPTS - 1) {
+            lastErr = `HTTP ${sRes.ok ? fRes.status : sRes.status}`
+            continue
+          }
+
+          if (!sRes.ok) {
+            const body = await sRes.json().catch(() => ({}))
+            throw new Error(body?.error ?? `HTTP ${sRes.status}`)
+          }
+          if (!fRes.ok) {
+            const body = await fRes.json().catch(() => ({}))
+            throw new Error(body?.error ?? `HTTP ${fRes.status}`)
+          }
+
+          const [s, f] = await Promise.all([sRes.json(), fRes.json()])
+          if (!active) return
+          setSummary(s)
+          setFlows(f)
+          setLoading(false)
+          return // success
+        } catch (e: any) {
+          if (!active) return
+          lastErr = e.message
+          if (attempt < MAX_ATTEMPTS - 1) continue
+        }
+      }
+      setError(lastErr || 'Failed to load data')
+      setLoading(false)
+    })()
+
+    return () => { active = false }
   }, [startDate, endDate])
 
   const cur = summary?.current
@@ -121,15 +158,19 @@ export default function EmailPage() {
           <div className="p-8">
 
             {loading && (
-              <div className="flex items-center justify-center py-24">
+              <div className="flex flex-col items-center justify-center py-24 gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                <span className="ml-3 text-muted-foreground">Loading Klaviyo data…</span>
+                <span className="text-muted-foreground text-sm">
+                  {slowLoad
+                    ? 'Klaviyo is rate-limiting — retrying automatically, please wait…'
+                    : 'Loading Klaviyo data…'}
+                </span>
               </div>
             )}
 
-            {error && (
+            {error && !loading && (
               <div className="bg-red-500/10 border border-red-500/30 rounded p-4 text-red-700 dark:text-red-300 text-sm mb-8">
-                Failed to load data: {error}. Is the backend running on port 3000?
+                {error}
               </div>
             )}
 

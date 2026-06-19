@@ -145,7 +145,7 @@ app.get('/api/klaviyo/summary', async (req, res) => {
     const { creds } = req.client;
     if (!creds.klaviyo) return res.status(422).json({ error: 'Klaviyo credentials not configured for this client' });
     const key = `ks_${req.client.id}_${start}_${end}_${compare_start}_${compare_end}`;
-    const data = await cached(key, () => getKlaviyoSummary(start, end, compare_start, compare_end, creds.klaviyo));
+    const data = await cached(key, () => getKlaviyoSummary(start, end, compare_start, compare_end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
     const detail = err.response?.data ?? err.message;
@@ -160,7 +160,7 @@ app.get('/api/klaviyo/flows', async (req, res) => {
     if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
     const { creds } = req.client;
     if (!creds.klaviyo) return res.status(422).json({ error: 'Klaviyo credentials not configured for this client' });
-    const data = await cached(`kf_${req.client.id}_${start}_${end}`, () => getKlaviyoFlows(start, end, creds.klaviyo));
+    const data = await cached(`kf_${req.client.id}_${start}_${end}`, () => getKlaviyoFlows(start, end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
     const detail = err.response?.data ?? err.message;
@@ -175,7 +175,7 @@ app.get('/api/klaviyo/campaigns', async (req, res) => {
     if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
     const { creds } = req.client;
     if (!creds.klaviyo) return res.status(422).json({ error: 'Klaviyo credentials not configured for this client' });
-    const data = await cached(`kc_${req.client.id}_${start}_${end}`, () => getKlaviyoCampaigns(start, end, creds.klaviyo));
+    const data = await cached(`kc_${req.client.id}_${start}_${end}`, () => getKlaviyoCampaigns(start, end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
     const detail = err.response?.data ?? err.message;

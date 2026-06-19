@@ -56,22 +56,37 @@ function reportBody(type, start, end) {
   };
 }
 
+// In-flight deduplication: if two callers request the same report simultaneously,
+// only one HTTP request is made to Klaviyo — both callers share the same promise.
+const _inFlight = new Map();
+
+function dedupe(key, fn) {
+  if (_inFlight.has(key)) return _inFlight.get(key);
+  const p = fn().finally(() => _inFlight.delete(key));
+  _inFlight.set(key, p);
+  return p;
+}
+
 async function fetchFlowReport(start, end, creds) {
-  const res = await withRetry(() => axios.post(
-    `${BASE}/flow-values-reports/`,
-    reportBody('flow-values-report', start, end),
-    { headers: headers(creds) }
-  ));
-  return res.data?.data?.attributes?.results ?? [];
+  return dedupe(`flow_${creds.api_key}_${start}_${end}`, async () => {
+    const res = await withRetry(() => axios.post(
+      `${BASE}/flow-values-reports/`,
+      reportBody('flow-values-report', start, end),
+      { headers: headers(creds) }
+    ));
+    return res.data?.data?.attributes?.results ?? [];
+  });
 }
 
 async function fetchCampaignReport(start, end, creds) {
-  const res = await withRetry(() => axios.post(
-    `${BASE}/campaign-values-reports/`,
-    reportBody('campaign-values-report', start, end),
-    { headers: headers(creds) }
-  ));
-  return res.data?.data?.attributes?.results ?? [];
+  return dedupe(`campaign_${creds.api_key}_${start}_${end}`, async () => {
+    const res = await withRetry(() => axios.post(
+      `${BASE}/campaign-values-reports/`,
+      reportBody('campaign-values-report', start, end),
+      { headers: headers(creds) }
+    ));
+    return res.data?.data?.attributes?.results ?? [];
+  });
 }
 
 async function fetchFlowList(creds) {
