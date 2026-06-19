@@ -29,20 +29,37 @@ const TYPE_BADGE: Record<string, { label: string; color: string }> = {
   REELS:          { label: 'Reel',     color: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
 }
 
-function toWeeklyChart(posts: any[], startDate: string) {
-  const periodStart = new Date(startDate)
-  const weeks: Record<string, { week: string; shares: number; saved: number; comments: number }> = {}
+function toChartData(posts: any[], startDate: string, endDate: string) {
+  const daysDiff = (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000
+  const start = new Date(startDate)
+
+  const groups = new Map<string, { sortKey: string; label: string; week: string; shares: number; saved: number; comments: number }>()
+
   for (const post of posts) {
-    const diff = Math.floor(
-      (new Date(post.timestamp).getTime() - periodStart.getTime()) / (7 * 24 * 60 * 60 * 1000)
-    )
-    const label = `W${diff + 1}`
-    if (!weeks[label]) weeks[label] = { week: label, shares: 0, saved: 0, comments: 0 }
-    weeks[label].shares   += post.shares   ?? 0
-    weeks[label].saved    += post.saved    ?? 0
-    weeks[label].comments += post.comments ?? 0
+    const d = new Date(post.timestamp)
+    let sortKey: string
+    let label: string
+
+    if (daysDiff <= 60) {
+      const wk = Math.floor((d.getTime() - start.getTime()) / (7 * 86400000))
+      sortKey = String(wk).padStart(4, '0')
+      label = `W${wk + 1}`
+    } else if (daysDiff <= 365) {
+      sortKey = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`
+      label = d.toLocaleDateString('nl-NL', { month: 'short' })
+    } else {
+      sortKey = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`
+      label = d.toLocaleDateString('nl-NL', { month: 'short', year: '2-digit' })
+    }
+
+    if (!groups.has(sortKey)) groups.set(sortKey, { sortKey, label, week: label, shares: 0, saved: 0, comments: 0 })
+    const g = groups.get(sortKey)!
+    g.shares   += post.shares   ?? 0
+    g.saved    += post.saved    ?? 0
+    g.comments += post.comments ?? 0
   }
-  return Object.values(weeks).sort((a, b) => a.week.localeCompare(b.week))
+
+  return [...groups.values()].sort((a, b) => a.sortKey < b.sortKey ? -1 : 1)
 }
 
 function KpiCard({ label, value, sub, icon: Icon, accent = false }: {
@@ -115,13 +132,14 @@ export default function MetaOrganischPage() {
   const totalShares   = posts.reduce((s, p) => s + (p.shares   ?? 0), 0)
   const totalSaved    = posts.reduce((s, p) => s + (p.saved    ?? 0), 0)
 
-  const reach = summary?.reach ?? 0
+  const totalPostReach = posts.reduce((s, p) => s + (p.reach ?? 0), 0)
+  const reach = (summary?.reach ?? 0) > 0 ? summary.reach : totalPostReach
   const engagementRate = reach > 0
     ? ((totalLikes + totalComments + totalShares + totalSaved) / reach) * 100
     : 0
 
-  const weeklyChart = toWeeklyChart(posts, startDate)
-  const chartHasData = weeklyChart.some(w => w.shares + w.saved + w.comments > 0)
+  const chartData = toChartData(posts, startDate, endDate)
+  const chartHasData = chartData.some(w => w.shares + w.saved + w.comments > 0)
 
   return (
     <div className="flex h-screen bg-bg">
@@ -200,14 +218,10 @@ export default function MetaOrganischPage() {
                     value={fmt(totalComments)}
                     icon={MessageCircle}
                   />
-                  {totalShares > 0 ? (
-                    <KpiCard label="Shares" value={fmt(totalShares)} icon={Share2} />
-                  ) : totalSaved > 0 ? (
-                    <KpiCard label="Opgeslagen" value={fmt(totalSaved)} icon={Bookmark} />
-                  ) : summary.profile_views > 0 ? (
+                  {totalShares > 0 && <KpiCard label="Shares" value={fmt(totalShares)} icon={Share2} />}
+                  {totalShares === 0 && totalSaved > 0 && <KpiCard label="Opgeslagen" value={fmt(totalSaved)} icon={Bookmark} />}
+                  {totalShares === 0 && totalSaved === 0 && summary.profile_views > 0 && (
                     <KpiCard label="Profielbezoeken" value={fmtK(summary.profile_views)} icon={Users} />
-                  ) : (
-                    <KpiCard label="Opgeslagen" value="—" sub="niet beschikbaar via API" icon={Bookmark} />
                   )}
                 </div>
 
@@ -257,7 +271,7 @@ export default function MetaOrganischPage() {
                       <p className="text-sm font-semibold text-foreground mb-6">Interacties per Type</p>
                       <div className="[&_.recharts-surface]:bg-transparent">
                         <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={weeklyChart} margin={{ top: 4, right: 8, left: -10, bottom: 0 }} barSize={60}>
+                          <BarChart data={chartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }} barSize={60}>
                             <XAxis dataKey="week" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
                             <Tooltip
