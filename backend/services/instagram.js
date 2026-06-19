@@ -59,34 +59,43 @@ export async function getInstagramSummary(start, end, creds) {
   const sinceUnix = Math.floor(new Date(start).getTime() / 1000);
   const untilUnix = Math.floor(new Date(end + 'T23:59:59').getTime() / 1000);
 
-  const [accountRes, insightsRes] = await Promise.all([
-    axios.get(`${BASE}/${igId}`, {
-      params: { fields: 'followers_count,media_count,name,username', access_token: creds.access_token }
-    }),
-    axios.get(`${BASE}/${igId}/insights`, {
-      params: {
-        metric: 'reach,impressions,profile_views',
-        period: 'total_value',
-        since: sinceUnix,
-        until: untilUnix,
-        access_token: creds.access_token,
-      }
-    }).catch(() => ({ data: { data: [] } }))
-  ]);
+  const accountRes = await axios.get(`${BASE}/${igId}`, {
+    params: { fields: 'followers_count,media_count,name,username', access_token: creds.access_token }
+  });
 
-  const insights = {};
-  for (const item of (insightsRes.data.data ?? [])) {
-    insights[item.name] = item.total_value?.value ?? 0;
+  // Fetch daily metrics and sum — more reliable than total_value across account types
+  async function fetchMetricSum(metric) {
+    try {
+      const res = await axios.get(`${BASE}/${igId}/insights`, {
+        params: {
+          metric,
+          period: 'day',
+          since: sinceUnix,
+          until: untilUnix,
+          access_token: creds.access_token,
+        }
+      });
+      return (res.data.data?.[0]?.values ?? []).reduce((sum, v) => sum + (v.value ?? 0), 0);
+    } catch (err) {
+      console.error(`[instagram/insights] ${metric} failed:`, err.response?.data ?? err.message);
+      return 0;
+    }
   }
+
+  const [reach, impressions, profile_views] = await Promise.all([
+    fetchMetricSum('reach'),
+    fetchMetricSum('impressions'),
+    fetchMetricSum('profile_views'),
+  ]);
 
   return {
     username: accountRes.data.username ?? '',
     name: accountRes.data.name ?? '',
     followers: accountRes.data.followers_count ?? 0,
     media_count: accountRes.data.media_count ?? 0,
-    reach: insights.reach ?? 0,
-    impressions: insights.impressions ?? 0,
-    profile_views: insights.profile_views ?? 0,
+    reach,
+    impressions,
+    profile_views,
   };
 }
 
