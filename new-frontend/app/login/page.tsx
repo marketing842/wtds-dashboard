@@ -36,15 +36,11 @@ export default function LoginPage() {
         body:    JSON.stringify({ email, password }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? 'Login failed'); setLoading(false); return }
-      if (data.role === 'admin') {
-        setError('This is the client portal. Admins must use /admin/login.')
-        setLoading(false); return
-      }
+      if (!res.ok || data.role === 'admin') { setError('Invalid email or password.'); setLoading(false); return }
       setToken(data.token)
       router.push('/')
     } catch {
-      setError('Cannot connect to server. Is the backend running?')
+      setError('Unable to sign in. Please try again.')
       setLoading(false)
     }
   }
