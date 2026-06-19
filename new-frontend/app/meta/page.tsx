@@ -247,7 +247,7 @@ export default function MetaPage() {
                   <div className="mb-4">
                     <p className="text-foreground font-bold text-lg">Campaigns</p>
                     <p className="text-muted-foreground text-sm mt-1">
-                      {startDate} → {endDate} · {active.length} active{inactive.length > 0 ? `, ${inactive.length} inactive` : ''}
+                      {startDate} – {endDate} · {active.length} active{inactive.length > 0 ? `, ${inactive.length} inactive` : ''}
                     </p>
                   </div>
 

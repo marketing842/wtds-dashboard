@@ -146,7 +146,7 @@ export default function SearchConsolePage() {
                   <div>
                     <div className="mb-4">
                       <p className="text-foreground font-bold text-lg">Top Search Queries</p>
-                      <p className="text-muted-foreground text-sm mt-1">{startDate} → {endDate} · <span style={{ color: '#22C55E' }}>🥇 top 3</span> · <span style={{ color: '#EAB308' }}>✦ top 10</span> · positie (lager = beter)</p>
+                      <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate} · <span style={{ color: '#22C55E' }}>🥇 top 3</span> · <span style={{ color: '#EAB308' }}>✦ top 10</span> · positie (lager = beter)</p>
                     </div>
 
                     <div className="stat-card p-0 overflow-hidden">
@@ -189,7 +189,7 @@ export default function SearchConsolePage() {
                   <div>
                     <div className="mb-4">
                       <p className="text-foreground font-bold text-lg">Top Pages</p>
-                      <p className="text-muted-foreground text-sm mt-1">{startDate} → {endDate}</p>
+                      <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate}</p>
                     </div>
 
                     <div className="stat-card p-0 overflow-hidden">

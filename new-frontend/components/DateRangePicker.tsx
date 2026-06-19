@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar } from 'lucide-react'
+import { Calendar, ArrowRight } from 'lucide-react'
 import { useDateRange } from '@/lib/date-range-context'
 
 const PRESETS = [
@@ -47,33 +47,38 @@ export function DateRangePicker() {
       </div>
 
       {/* Date inputs */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         <input
           type="date"
           value={startDate}
           max={endDate}
           onChange={e => { setActivePreset(null); setStartDate(e.target.value) }}
-          className="rounded-lg px-2.5 py-1 text-[11px] font-medium outline-none transition-all duration-150"
+          className="rounded-lg px-2.5 py-1 text-[11px] font-semibold outline-none transition-all duration-150"
           style={{
             background:  'var(--bg)',
             border:      '1px solid var(--border)',
-            color:       'var(--text-muted)',
+            color:       'var(--text-primary)',
             width:       '7.5rem',
           }}
           onFocus={e  => (e.target.style.borderColor = 'var(--accent)')}
           onBlur={e   => (e.target.style.borderColor = 'var(--border)')}
         />
-        <span style={{ color: 'var(--text-subtle)', fontSize: '0.7rem' }}>→</span>
+        <div
+          className="flex items-center justify-center w-7 h-6 rounded-md flex-shrink-0"
+          style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }}
+        >
+          <ArrowRight className="w-3 h-3" style={{ color: 'var(--accent)' }} />
+        </div>
         <input
           type="date"
           value={endDate}
           min={startDate}
           onChange={e => { setActivePreset(null); setEndDate(e.target.value) }}
-          className="rounded-lg px-2.5 py-1 text-[11px] font-medium outline-none transition-all duration-150"
+          className="rounded-lg px-2.5 py-1 text-[11px] font-semibold outline-none transition-all duration-150"
           style={{
             background:  'var(--bg)',
             border:      '1px solid var(--border)',
-            color:       'var(--text-muted)',
+            color:       'var(--text-primary)',
             width:       '7.5rem',
           }}
           onFocus={e  => (e.target.style.borderColor = 'var(--accent)')}

@@ -191,7 +191,7 @@ export default function MetaOrganischPage() {
                   <KpiCard
                     label="Posts Deze Periode"
                     value={String(posts.length)}
-                    sub={`${startDate} → ${endDate}`}
+                    sub={`${startDate} – ${endDate}`}
                     icon={Camera}
                   />
                   <KpiCard
@@ -294,7 +294,7 @@ export default function MetaOrganischPage() {
                 <div>
                   <div className="mb-4">
                     <p className="text-foreground font-bold text-xl">Posts in Periode</p>
-                    <p className="text-muted-foreground text-sm mt-1">{startDate} → {endDate} · {posts.length} post{posts.length !== 1 ? 's' : ''}</p>
+                    <p className="text-muted-foreground text-sm mt-1">{startDate} – {endDate} · {posts.length} post{posts.length !== 1 ? 's' : ''}</p>
                   </div>
 
                   {posts.length === 0 ? (
