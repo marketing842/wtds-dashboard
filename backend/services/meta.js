@@ -62,9 +62,9 @@ export async function getMetaAdCreatives(start, end, creds) {
       const spend = parseNum(ins.spend);
       if (impressions === 0 && spend === 0) return null;
 
-      const videoPlays  = parseNum(ins.video_play_actions?.[0]?.value);
-      const video30sec  = parseNum(ins.video_30_sec_watched_actions?.[0]?.value);
-      const avgWatchMs  = parseNum(ins.video_avg_time_watched_actions?.[0]?.value);
+      const videoPlays   = parseNum(ins.video_play_actions?.[0]?.value);
+      const video30sec   = parseNum(ins.video_30_sec_watched_actions?.[0]?.value);
+      const avgWatchSec  = parseNum(ins.video_avg_time_watched_actions?.[0]?.value);
       const purchases   = extractActions(ins.actions, 'purchase') || extractActions(ins.actions, 'offsite_conversion.fb_pixel_purchase');
       const purchaseVal = extractActions(ins.action_values, 'purchase') || extractActions(ins.action_values, 'offsite_conversion.fb_pixel_purchase');
       const leads       = extractActions(ins.actions, 'lead') || extractActions(ins.actions, 'onsite_conversion.lead_grouped') || extractActions(ins.actions, 'offsite_conversion.fb_pixel_lead');
@@ -83,7 +83,7 @@ export async function getMetaAdCreatives(start, end, creds) {
         is_video: videoPlays > 0,
         thumbstop_rate: impressions > 0 && videoPlays > 0 ? (videoPlays / impressions) * 100 : null,
         hold_rate: videoPlays > 0 && video30sec > 0 ? (video30sec / videoPlays) * 100 : null,
-        avg_watch_sec: avgWatchMs > 0 ? avgWatchMs / 1000 : null,
+        avg_watch_sec: avgWatchSec > 0 ? avgWatchSec : null,
       };
     })
     .filter(Boolean)
