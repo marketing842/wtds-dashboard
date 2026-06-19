@@ -24,7 +24,7 @@ export default function AdminOverviewPage() {
   }, [])
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl page-in">
 
       {/* Page header */}
       <div className="flex items-end justify-between mb-8">
@@ -76,16 +76,17 @@ export default function AdminOverviewPage() {
 
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {clients.map(c => (
+          {clients.map((c, idx) => (
             <Link
               key={c.id}
               href={`/admin/clients/${c.id}`}
-              className="stat-card group flex items-center gap-4 hover:no-underline"
+              className="stat-card group flex items-center gap-4 hover:no-underline fade-in-up"
+              style={{ animationDelay: `${idx * 60}ms` }}
             >
               {/* Avatar */}
               <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black text-white flex-shrink-0"
-                style={{ background: 'var(--accent)', boxShadow: '0 4px 12px rgba(255,77,0,0.25)' }}
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black text-white flex-shrink-0 accent-glow"
+                style={{ background: 'var(--accent)' }}
               >
                 {c.initial}
               </div>

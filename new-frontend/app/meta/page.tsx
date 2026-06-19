@@ -92,7 +92,7 @@ export default function MetaPage() {
         <Header title="Meta Ads" description="Facebook & Instagram campaign data for the selected period" />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8">
+          <div className="p-8 page-in">
 
             {loading && (
               <div className="flex items-center justify-center py-24">

@@ -155,7 +155,7 @@ export default function EmailPage() {
         />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8">
+          <div className="p-8 page-in">
 
             {loading && (
               <div className="flex flex-col items-center justify-center py-24 gap-3">

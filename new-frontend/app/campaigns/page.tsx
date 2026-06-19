@@ -120,7 +120,7 @@ export default function CampaignsPage() {
         <Header title="Google Ads" description="Real campaign data for the selected period" />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8">
+          <div className="p-8 page-in">
 
             {loading && (
               <div className="flex items-center justify-center py-24">

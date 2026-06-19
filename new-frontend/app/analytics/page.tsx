@@ -95,7 +95,7 @@ export default function AnalyticsPage() {
         <Header title="Analytics" description="Google Analytics 4 — website traffic & behaviour" />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8">
+          <div className="p-8 page-in">
 
             {loading && (
               <div className="flex items-center justify-center py-24">

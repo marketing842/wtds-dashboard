@@ -227,13 +227,60 @@
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .fade-in-up {
-    animation: fadeInUp 0.35s ease both;
-  }
+  .fade-in-up   { animation: fadeInUp 0.35s ease both; }
   .fade-in-up-1 { animation: fadeInUp 0.35s 0.05s ease both; }
   .fade-in-up-2 { animation: fadeInUp 0.35s 0.10s ease both; }
   .fade-in-up-3 { animation: fadeInUp 0.35s 0.15s ease both; }
   .fade-in-up-4 { animation: fadeInUp 0.35s 0.20s ease both; }
+
+  /* ── Slide in from left (sidebar nav items) ── */
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .slide-in-left { animation: slideInLeft 0.28s ease both; }
+
+  /* ── Stat number reveal (blur + scale pop) ── */
+  @keyframes numberReveal {
+    from { opacity: 0; transform: scale(0.82); filter: blur(6px); }
+    to   { opacity: 1; transform: scale(1);    filter: blur(0);   }
+  }
+  .number-reveal {
+    animation: numberReveal 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+  }
+
+  /* ── Badge pop-in ── */
+  @keyframes badgePop {
+    0%   { opacity: 0; transform: scale(0.65); }
+    70%  { transform: scale(1.1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .badge-pop {
+    animation: badgePop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) 0.38s both;
+  }
+
+  /* ── Live dot heartbeat ── */
+  @keyframes livePulse {
+    0%, 100% { box-shadow: 0 0 0 0   rgba(34,197,94,0.70); }
+    50%       { box-shadow: 0 0 0 5px rgba(34,197,94,0);   }
+  }
+  .live-pulse {
+    animation: livePulse 2.2s ease-in-out infinite;
+  }
+
+  /* ── Accent avatar glow breathe ── */
+  @keyframes accentGlow {
+    0%, 100% { box-shadow: 0 4px 14px rgba(255,77,0,0.30); }
+    50%       { box-shadow: 0 4px 24px rgba(255,77,0,0.65); }
+  }
+  .accent-glow { animation: accentGlow 3s ease-in-out infinite; }
+
+  /* ── Page content entrance ── */
+  @keyframes pageIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .page-in { animation: pageIn 0.4s ease both; }
 
   /* ── Shimmer skeleton (better than pulse) ── */
   @keyframes shimmer {

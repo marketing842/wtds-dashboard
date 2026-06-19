@@ -205,7 +205,7 @@ export default function OverviewPage() {
         <Header title="Overzicht" description="Cross-channel performance overview" />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8">
+          <div className="p-8 page-in">
 
             {(
               <>

@@ -39,7 +39,7 @@ export function StatCard({ label, value, change, icon: Icon }: StatCardProps) {
 
       {/* Value */}
       <p
-        className="mb-3 leading-none truncate relative"
+        className="mb-3 leading-none truncate relative number-reveal"
         style={{
           fontFamily:    "'Inter', sans-serif",
           fontWeight:    800,
@@ -54,7 +54,7 @@ export function StatCard({ label, value, change, icon: Icon }: StatCardProps) {
       {/* Change badge */}
       {change ? (
         <span
-          className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+          className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full badge-pop"
           style={isUp ? {
             background: 'rgba(34,197,94,0.10)',
             color:      '#22C55E',

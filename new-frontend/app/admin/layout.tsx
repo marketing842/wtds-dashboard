@@ -102,8 +102,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3 px-3 py-3 rounded-xl"
             style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--accent)', boxShadow: '0 4px 14px rgba(255,77,0,0.35)' }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 accent-glow"
+              style={{ background: 'var(--accent)' }}
             >
               <ShieldCheck className="w-4.5 h-4.5 text-white" style={{ width: 18, height: 18 }} />
             </div>
@@ -133,20 +133,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav className="relative z-10 flex-1 px-3 pb-2 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, label, icon: Icon }, idx) => {
             const active = pathname === href
             return (
               <Link
                 key={href}
                 href={href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 slide-in-left"
                 style={active ? {
                   background: 'var(--accent)',
                   color: '#fff',
                   boxShadow: '0 4px 16px rgba(255,77,0,0.28)',
+                  animationDelay: `${idx * 60}ms`,
                 } : {
                   color: 'var(--text-muted)',
                   background: 'transparent',
+                  animationDelay: `${idx * 60}ms`,
                 }}
                 onMouseEnter={e => {
                   if (!active) {
@@ -164,6 +166,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Icon className="w-4 h-4 flex-shrink-0"
                   style={{ color: active ? 'rgba(255,255,255,0.9)' : 'inherit' }} />
                 {label}
+                {active && (
+                  <span
+                    className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.7)' }}
+                  />
+                )}
               </Link>
             )
           })}

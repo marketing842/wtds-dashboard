@@ -80,8 +80,8 @@ export function Sidebar() {
         <div className="flex items-center gap-3 px-3 py-3 rounded-xl"
           style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0"
-            style={{ background: 'var(--accent)', boxShadow: '0 4px 14px rgba(255,77,0,0.35)' }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0 accent-glow"
+            style={{ background: 'var(--accent)' }}
           >
             {clientInfo?.initial ?? '?'}
           </div>
@@ -90,7 +90,7 @@ export function Sidebar() {
               {clientInfo?.name ?? '—'}
             </p>
             <div className="flex items-center gap-1.5 mt-1.5">
-              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 live-pulse"
                 style={{ background: '#22C55E', boxShadow: '0 0 6px rgba(34,197,94,0.75)' }} />
               <span className="text-[10px] font-semibold uppercase tracking-[0.1em]"
                 style={{ color: 'var(--text-subtle)' }}>
@@ -111,20 +111,22 @@ export function Sidebar() {
 
       {/* ── Nav items ─────────────────────────────── */}
       <nav className="relative z-10 flex-1 px-3 pb-2 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {NAV.map(({ href, label, icon: Icon }, idx) => {
           const active = pathname === href
           return (
             <Link
               key={href}
               href={href}
-              className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
+              className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 slide-in-left"
               style={active ? {
                 background: 'var(--accent)',
                 color: '#fff',
                 boxShadow: '0 4px 16px rgba(255,77,0,0.28)',
+                animationDelay: `${idx * 45}ms`,
               } : {
                 background: 'transparent',
                 color: 'var(--text-muted)',
+                animationDelay: `${idx * 45}ms`,
               }}
               onMouseEnter={e => {
                 if (!active) {

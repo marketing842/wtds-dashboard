@@ -91,7 +91,7 @@ export default function SearchConsolePage() {
         <Header title="Search Console" description="Organic search performance for spotlezz.nl" />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8">
+          <div className="p-8 page-in">
 
             {loading && (
               <div className="flex items-center justify-center py-24">
