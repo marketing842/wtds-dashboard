@@ -92,11 +92,11 @@ export default function MetaPage() {
     <div className="flex h-screen bg-bg">
       <Sidebar />
 
-      <div className="flex-1 ml-64 flex flex-col overflow-hidden">
+      <div className="flex-1 lg:ml-64 flex flex-col overflow-hidden">
         <Header title={t('meta.title')} description={t('meta.desc')} />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8 page-in">
+          <div className="p-4 sm:p-6 lg:p-8 page-in">
 
             {loading && (
               <div className="flex items-center justify-center py-24">
@@ -145,7 +145,7 @@ export default function MetaPage() {
                 </div>
 
                 {/* Secondary KPIs — adapts to leads vs purchase campaigns */}
-                <div className="grid grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                   {[
                     { label: 'CTR', value: `${fmt(cur.ctr)}%` },
                     { label: 'Avg. CPC', value: fmtEur(cur.cpc) },
@@ -272,7 +272,7 @@ export default function MetaPage() {
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-6 gap-4">
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
                             {[
                               { label: 'Impressions', value: c.impressions >= 1000 ? `${fmt(c.impressions / 1000)}K` : String(c.impressions) },
                               { label: 'Clicks', value: fmt(c.clicks, 0) },

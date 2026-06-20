@@ -52,6 +52,13 @@ interface ChannelErrors {
   gsc?: string
 }
 
+const CHANNEL_LABELS: Record<string, string> = {
+  gAds: 'Google Ads',
+  meta: 'Meta Ads',
+  klaviyo: 'Email',
+  gsc: 'Search Console',
+}
+
 export default function OverviewPage() {
   const { startDate, endDate } = useDateRange()
   const { resolvedTheme } = useTheme()
@@ -204,11 +211,11 @@ export default function OverviewPage() {
   return (
     <div className="flex h-screen bg-bg">
       <Sidebar />
-      <div className="flex-1 ml-64 flex flex-col overflow-hidden">
+      <div className="flex-1 lg:ml-64 flex flex-col overflow-hidden">
         <Header title={tr('dashboard.title')} description={tr('dashboard.desc')} />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8 page-in">
+          <div className="p-4 sm:p-6 lg:p-8 page-in">
 
             {(
               <>
@@ -226,7 +233,7 @@ export default function OverviewPage() {
                       <p className="text-red-700 dark:text-red-300 text-sm font-semibold mb-1">{tr('dashboard.errorChannels')}</p>
                       <ul className="text-red-700 dark:text-red-400 text-xs space-y-0.5">
                         {errorEntries.map(([ch, msg]) => (
-                          <li key={ch} className="capitalize">{ch}: {msg}</li>
+                          <li key={ch}><span className="font-semibold">{CHANNEL_LABELS[ch] ?? ch}:</span> {msg}</li>
                         ))}
                       </ul>
                     </div>

@@ -152,14 +152,14 @@ export default function EmailPage() {
     <div className="flex h-screen bg-bg">
       <Sidebar />
 
-      <div className="flex-1 ml-64 flex flex-col overflow-hidden">
+      <div className="flex-1 lg:ml-64 flex flex-col overflow-hidden">
         <Header
           title={t('email.title')}
           description={t('email.desc')}
         />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8 page-in">
+          <div className="p-4 sm:p-6 lg:p-8 page-in">
 
             {loading && (
               <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -252,7 +252,7 @@ export default function EmailPage() {
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-4 gap-4 mt-6">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
                             <div>
                               <p className="text-muted-foreground text-xs font-medium">{t('email.table.opens')}</p>
                               <p className="text-lg font-bold text-foreground mt-1">{flow.opens}</p>

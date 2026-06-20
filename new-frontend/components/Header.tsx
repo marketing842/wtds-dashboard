@@ -16,7 +16,7 @@ export function Header({ title, description, showDatePicker = true }: { title: s
         boxShadow:    '0 1px 0 var(--border), 0 2px 8px rgba(0,0,0,0.04)',
       }}
     >
-      <div className="flex-1 px-8 flex items-center justify-between gap-6">
+      <div className="flex-1 pl-16 pr-4 sm:px-8 flex items-center justify-between gap-3 sm:gap-6">
 
         {/* ── Page title ── */}
         <div className="min-w-0">
@@ -54,11 +54,11 @@ export function Header({ title, description, showDatePicker = true }: { title: s
           </div>
           )}
 
-          <div className="w-px h-5 mx-1" style={{ background: 'var(--border)' }} />
+          <div className="w-px h-5 mx-1 hidden sm:block" style={{ background: 'var(--border)' }} />
 
           <ModeToggle />
 
-          <div className="w-px h-5 mx-1" style={{ background: 'var(--border)' }} />
+          <div className="w-px h-5 mx-1 hidden sm:block" style={{ background: 'var(--border)' }} />
 
           {/* Client identity chip */}
           <div

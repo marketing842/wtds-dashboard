@@ -94,11 +94,11 @@ export default function AnalyticsPage() {
     <div className="flex h-screen bg-bg">
       <Sidebar />
 
-      <div className="flex-1 ml-64 flex flex-col overflow-hidden">
+      <div className="flex-1 lg:ml-64 flex flex-col overflow-hidden">
         <Header title={t('analytics.title')} description={t('analytics.desc')} />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8 page-in">
+          <div className="p-4 sm:p-6 lg:p-8 page-in">
 
             {loading && (
               <div className="flex items-center justify-center py-24">
@@ -196,8 +196,8 @@ export default function AnalyticsPage() {
                       <p className="text-foreground font-bold text-lg">{t('analytics.topPages')}</p>
                       <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /></p>
                     </div>
-                    <div className="stat-card p-0 overflow-hidden">
-                      <table className="w-full text-sm">
+                    <div className="stat-card p-0 overflow-x-auto">
+                      <table className="w-full min-w-[560px] text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
                             <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('analytics.table.page')}</th>

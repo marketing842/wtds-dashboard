@@ -2,8 +2,9 @@
 
 import {
   Target, TrendingUp, Users, Mail,
-  BarChart3, Globe, Search, Camera, LogOut,
+  BarChart3, Globe, Search, Camera, LogOut, Menu, X,
 } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useClientInfo } from '@/lib/client-context'
@@ -27,6 +28,10 @@ export function Sidebar() {
   const router     = useRouter()
   const clientInfo = useClientInfo()
   const { t }      = useLanguage()
+  const [open, setOpen] = useState(false)
+
+  // Close the mobile drawer whenever the route changes
+  useEffect(() => { setOpen(false) }, [pathname])
 
   function handleSignOut() {
     clearToken()
@@ -34,10 +39,40 @@ export function Sidebar() {
   }
 
   return (
+    <>
+    {/* ── Mobile hamburger (hidden on desktop) ───── */}
+    <button
+      onClick={() => setOpen(true)}
+      aria-label="Open menu"
+      className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-xl flex items-center justify-center"
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+    >
+      <Menu className="w-5 h-5" />
+    </button>
+
+    {/* ── Backdrop when drawer is open (mobile) ──── */}
+    {open && (
+      <div
+        onClick={() => setOpen(false)}
+        className="lg:hidden fixed inset-0 z-50"
+        style={{ background: 'rgba(0,0,0,0.5)' }}
+      />
+    )}
+
     <aside
-      className="w-64 h-screen fixed left-0 top-0 flex flex-col overflow-hidden"
+      className={`w-64 h-screen fixed left-0 top-0 z-50 flex flex-col overflow-hidden transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--border)' }}
     >
+      {/* ── Close button (mobile only) ────────────── */}
+      <button
+        onClick={() => setOpen(false)}
+        aria-label="Close menu"
+        className="lg:hidden absolute top-4 right-4 z-20 w-8 h-8 rounded-lg flex items-center justify-center"
+        style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+      >
+        <X className="w-4 h-4" />
+      </button>
+
       {/* Subtle top glow */}
       <div className="absolute top-0 left-0 right-0 h-36 pointer-events-none z-0"
         style={{ background: 'radial-gradient(ellipse at 40% 0%, rgba(255,77,0,0.07) 0%, transparent 70%)' }} />
@@ -186,5 +221,6 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   )
 }

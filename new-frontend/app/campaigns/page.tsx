@@ -119,11 +119,11 @@ export default function CampaignsPage() {
     <div className="flex h-screen bg-bg">
       <Sidebar />
 
-      <div className="flex-1 ml-64 flex flex-col overflow-hidden">
+      <div className="flex-1 lg:ml-64 flex flex-col overflow-hidden">
         <Header title={t('campaigns.title')} description={t('campaigns.desc')} />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8 page-in">
+          <div className="p-4 sm:p-6 lg:p-8 page-in">
 
             {loading && (
               <div className="flex items-center justify-center py-24">
@@ -169,7 +169,7 @@ export default function CampaignsPage() {
                 </div>
 
                 {/* Secondary KPIs */}
-                <div className="grid grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
                   {[
                     { label: t('campaigns.stat.ctr'), value: `${fmt(cur.ctr)}%` },
                     { label: t('campaigns.stat.avgCpc'), value: fmtEur(cur.avg_cpc) },
@@ -212,8 +212,8 @@ export default function CampaignsPage() {
                     topKeywords.length === 0 ? (
                       <p className="text-muted-foreground text-sm">{t('campaigns.noKeywords')}</p>
                     ) : (
-                      <div className="stat-card p-0 overflow-hidden">
-                        <table className="w-full text-sm">
+                      <div className="stat-card p-0 overflow-x-auto">
+                        <table className="w-full min-w-[560px] text-sm">
                           <thead>
                             <tr className="border-b border-[var(--border)]">
                               <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('campaigns.table.keyword')}</th>
@@ -268,7 +268,7 @@ export default function CampaignsPage() {
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-6 gap-4">
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
                           {[
                             { label: t('campaigns.stat.impressions'), value: c.impressions >= 1000 ? `${fmt(c.impressions / 1000)}K` : String(c.impressions) },
                             { label: t('campaigns.stat.clicks'), value: String(c.clicks) },

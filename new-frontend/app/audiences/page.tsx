@@ -54,11 +54,11 @@ export default function AudiencesPage() {
     <div className="flex h-screen bg-bg">
       <Sidebar />
 
-      <div className="flex-1 ml-64 flex flex-col overflow-hidden">
+      <div className="flex-1 lg:ml-64 flex flex-col overflow-hidden">
         <Header title={t('audiences.title')} description={t('audiences.desc')} showDatePicker={false} />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8 page-in">
+          <div className="p-4 sm:p-6 lg:p-8 page-in">
 
             {loading && (
               <div className="flex items-center justify-center py-24">
@@ -115,8 +115,8 @@ export default function AudiencesPage() {
                   {lists.length === 0 ? (
                     <p className="text-muted-foreground text-sm">{t('audiences.noLists')}</p>
                   ) : (
-                    <div className="stat-card p-0 overflow-hidden">
-                      <table className="w-full text-sm">
+                    <div className="stat-card p-0 overflow-x-auto">
+                      <table className="w-full min-w-[560px] text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
                             <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('audiences.table.listName')}</th>
@@ -144,8 +144,8 @@ export default function AudiencesPage() {
                 {segments.length > 0 && (
                   <div>
                     <p className="text-foreground font-bold text-lg mb-4">{t('audiences.segments')}</p>
-                    <div className="stat-card p-0 overflow-hidden">
-                      <table className="w-full text-sm">
+                    <div className="stat-card p-0 overflow-x-auto">
+                      <table className="w-full min-w-[560px] text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
                             <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('audiences.table.segmentName')}</th>

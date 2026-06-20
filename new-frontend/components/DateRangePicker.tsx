@@ -46,8 +46,8 @@ export function DateRangePicker() {
         ))}
       </div>
 
-      {/* Date inputs */}
-      <div className="flex items-center gap-1">
+      {/* Date inputs — hidden on phones to save space (presets remain) */}
+      <div className="hidden sm:flex items-center gap-1">
         <input
           type="date"
           value={startDate}
