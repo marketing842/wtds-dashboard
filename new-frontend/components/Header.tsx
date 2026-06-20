@@ -21,11 +21,10 @@ export function Header({ title, description, showDatePicker = true }: { title: s
         {/* ── Page title ── */}
         <div className="min-w-0">
           <h1
-            className="leading-none"
+            className="leading-none truncate text-xl sm:text-[1.75rem]"
             style={{
               fontFamily:    "'Barlow Condensed', sans-serif",
               fontWeight:    900,
-              fontSize:      '1.75rem',
               letterSpacing: '-0.025em',
               textTransform: 'uppercase',
               color:         'var(--text-primary)',
@@ -35,7 +34,7 @@ export function Header({ title, description, showDatePicker = true }: { title: s
           </h1>
           {description && (
             <p
-              className="text-[10px] font-bold uppercase tracking-[0.12em] mt-0.5"
+              className="text-[10px] font-bold uppercase tracking-[0.12em] mt-0.5 hidden sm:block"
               style={{ color: 'var(--text-subtle)' }}
             >
               {description}
@@ -60,9 +59,9 @@ export function Header({ title, description, showDatePicker = true }: { title: s
 
           <div className="w-px h-5 mx-1 hidden sm:block" style={{ background: 'var(--border)' }} />
 
-          {/* Client identity chip */}
+          {/* Client identity chip — hidden on phones (client already shown in sidebar) */}
           <div
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
+            className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-xl"
             style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
           >
             <div className="text-right hidden sm:block">

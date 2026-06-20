@@ -93,6 +93,12 @@
 @layer base {
   html { scroll-behavior: smooth; }
 
+  html, body {
+    /* Guard against any element forcing the page wider than the viewport */
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
   body {
     background: var(--bg);
     color: var(--text-primary);
