@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, requireAdmin } from './middleware/auth.js';
 import { loadCredentials, invalidateCredentials } from './services/credential-loader.js';
+import { describeApiError } from './services/api-error.js';
 import {
   getKlaviyoSummary,
   getKlaviyoFlows,
@@ -153,9 +154,9 @@ app.get('/api/klaviyo/summary', async (req, res) => {
       console.warn('[klaviyo/summary] date range rejected by Klaviyo, returning empty');
       return res.json({ current: null, previous: null });
     }
-    const detail = err.response?.data ?? err.message;
-    console.error('[klaviyo/summary]', detail);
-    res.status(status ?? 500).json({ error: err.message, detail });
+    const out = describeApiError(err, 'Klaviyo');
+    console.error('[klaviyo/summary]', out.detail);
+    res.status(status ?? 500).json(out);
   }
 });
 
@@ -172,9 +173,9 @@ app.get('/api/klaviyo/flows', async (req, res) => {
       console.warn('[klaviyo/flows] date range rejected, returning empty');
       return res.json([]);
     }
-    const detail = err.response?.data ?? err.message;
-    console.error('[klaviyo/flows]', detail);
-    res.status(err.response?.status ?? 500).json({ error: err.message, detail });
+    const out = describeApiError(err, 'Klaviyo');
+    console.error('[klaviyo/flows]', out.detail);
+    res.status(err.response?.status ?? 500).json(out);
   }
 });
 
@@ -191,9 +192,9 @@ app.get('/api/klaviyo/campaigns', async (req, res) => {
       console.warn('[klaviyo/campaigns] date range rejected, returning empty');
       return res.json([]);
     }
-    const detail = err.response?.data ?? err.message;
-    console.error('[klaviyo/campaigns]', detail);
-    res.status(err.response?.status ?? 500).json({ error: err.message, detail });
+    const out = describeApiError(err, 'Klaviyo');
+    console.error('[klaviyo/campaigns]', out.detail);
+    res.status(err.response?.status ?? 500).json(out);
   }
 });
 
@@ -204,9 +205,9 @@ app.get('/api/klaviyo/lists', async (req, res) => {
     const data = await getKlaviyoLists({ ...creds.klaviyo, clientId: req.client.id });
     res.json(data);
   } catch (err) {
-    const detail = err.response?.data ?? err.message;
-    console.error('[klaviyo/lists]', detail);
-    res.status(err.response?.status ?? 500).json({ error: err.message, detail });
+    const out = describeApiError(err, 'Klaviyo');
+    console.error('[klaviyo/lists]', out.detail);
+    res.status(err.response?.status ?? 500).json(out);
   }
 });
 
@@ -223,10 +224,9 @@ app.get('/api/google-ads/summary', async (req, res) => {
     const data = await cached(`gas_${req.client.id}_${start}_${end}`, () => getGoogleAdsSummary(cid, start, end, gCreds), 5 * 60 * 1000);
     res.json(data);
   } catch (err) {
-    const d = err.response?.data;
-    const msg = d?.error?.message ?? d?.error_description ?? (typeof d?.error === 'string' ? d.error : null) ?? err.message;
-    console.error('[google-ads/summary]', d ?? err.message);
-    res.status(500).json({ error: msg, detail: d });
+    const out = describeApiError(err, 'Google Ads');
+    console.error('[google-ads/summary]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -241,10 +241,9 @@ app.get('/api/google-ads/campaigns', async (req, res) => {
     const data = await cached(`gac_${req.client.id}_${start}_${end}`, () => getGoogleAdsCampaigns(cid, start, end, gCreds), 5 * 60 * 1000);
     res.json(data);
   } catch (err) {
-    const gErr = err.response?.data?.error ?? err.response?.data;
-    const msg = gErr?.message ?? gErr?.status ?? err.message;
-    console.error('[google-ads/campaigns]', gErr ?? err.message);
-    res.status(500).json({ error: msg, detail: gErr });
+    const out = describeApiError(err, 'Google Ads');
+    console.error('[google-ads/campaigns]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -259,10 +258,9 @@ app.get('/api/google-ads/keywords', async (req, res) => {
     const data = await cached(`gak_${req.client.id}_${start}_${end}`, () => getGoogleAdsKeywords(cid, start, end, gCreds), 5 * 60 * 1000);
     res.json(data);
   } catch (err) {
-    const gErr = err.response?.data?.error ?? err.response?.data;
-    const msg = gErr?.message ?? gErr?.status ?? err.message;
-    console.error('[google-ads/keywords]', gErr ?? err.message);
-    res.status(500).json({ error: msg, detail: gErr });
+    const out = describeApiError(err, 'Google Ads');
+    console.error('[google-ads/keywords]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -285,9 +283,9 @@ app.get('/api/meta/summary', async (req, res) => {
       console.warn('[meta/summary] date range beyond 37 months, returning empty');
       return res.json(META_EMPTY_SUMMARY);
     }
-    const msg = fb?.message ?? err.message;
-    console.error('[meta/summary]', fb ?? err.message);
-    res.status(500).json({ error: msg, code: fb?.code, detail: err.response?.data });
+    const out = describeApiError(err, 'Meta');
+    console.error('[meta/summary]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -305,9 +303,9 @@ app.get('/api/meta/campaigns', async (req, res) => {
       console.warn('[meta/campaigns] date range beyond 37 months, returning empty');
       return res.json([]);
     }
-    const msg = fb?.message ?? err.message;
-    console.error('[meta/campaigns]', fb ?? err.message);
-    res.status(500).json({ error: msg, code: fb?.code, detail: err.response?.data });
+    const out = describeApiError(err, 'Meta');
+    console.error('[meta/campaigns]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -325,9 +323,9 @@ app.get('/api/meta/creatives', async (req, res) => {
       console.warn('[meta/creatives] date range beyond 37 months, returning empty');
       return res.json([]);
     }
-    const msg = fb?.message ?? err.message;
-    console.error('[meta/creatives]', fb ?? err.message);
-    res.status(500).json({ error: msg, code: fb?.code, detail: err.response?.data });
+    const out = describeApiError(err, 'Meta');
+    console.error('[meta/creatives]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -343,8 +341,9 @@ app.get('/api/search-console/summary', async (req, res) => {
     const data = await cached(`gss_${req.client.id}_${start}_${end}`, () => getSearchConsoleSummary(start, end, scCreds));
     res.json(data);
   } catch (err) {
-    console.error('[search-console/summary]', err.response?.data || err.message);
-    res.status(500).json({ error: err.message });
+    const out = describeApiError(err, 'Search Console');
+    console.error('[search-console/summary]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -358,8 +357,9 @@ app.get('/api/search-console/queries', async (req, res) => {
     const data = await cached(`gsq_${req.client.id}_${start}_${end}`, () => getTopQueries(start, end, scCreds));
     res.json(data);
   } catch (err) {
-    console.error('[search-console/queries]', err.response?.data || err.message);
-    res.status(500).json({ error: err.message });
+    const out = describeApiError(err, 'Search Console');
+    console.error('[search-console/queries]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -373,8 +373,9 @@ app.get('/api/search-console/pages', async (req, res) => {
     const data = await cached(`gsp_${req.client.id}_${start}_${end}`, () => getTopPages(start, end, scCreds));
     res.json(data);
   } catch (err) {
-    console.error('[search-console/pages]', err.response?.data || err.message);
-    res.status(500).json({ error: err.message });
+    const out = describeApiError(err, 'Search Console');
+    console.error('[search-console/pages]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -389,8 +390,9 @@ app.get('/api/instagram/summary', async (req, res) => {
     const data = await cached(`is_${req.client.id}_${start}_${end}`, () => getInstagramSummary(start, end, creds.meta));
     res.json(data);
   } catch (err) {
-    console.error('[instagram/summary]', err.message);
-    res.status(500).json({ error: err.message });
+    const out = describeApiError(err, 'Instagram');
+    console.error('[instagram/summary]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -403,8 +405,9 @@ app.get('/api/instagram/posts', async (req, res) => {
     const data = await cached(`ip_${req.client.id}_${start}_${end}`, () => getInstagramPosts(start, end, creds.meta));
     res.json(data);
   } catch (err) {
-    console.error('[instagram/posts]', err.message);
-    res.status(500).json({ error: err.message });
+    const out = describeApiError(err, 'Instagram');
+    console.error('[instagram/posts]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -420,8 +423,9 @@ app.get('/api/analytics/summary', async (req, res) => {
     const data = await cached(`as_${req.client.id}_${start}_${end}`, () => getGA4Summary(start, end, ga4Creds));
     res.json(data);
   } catch (err) {
-    console.error('[analytics/summary]', err.message);
-    res.status(500).json({ error: err.message });
+    const out = describeApiError(err, 'Analytics');
+    console.error('[analytics/summary]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -435,8 +439,9 @@ app.get('/api/analytics/pages', async (req, res) => {
     const data = await cached(`ap_${req.client.id}_${start}_${end}`, () => getGA4TopPages(start, end, ga4Creds));
     res.json(data);
   } catch (err) {
-    console.error('[analytics/pages]', err.message);
-    res.status(500).json({ error: err.message });
+    const out = describeApiError(err, 'Analytics');
+    console.error('[analytics/pages]', out.detail);
+    res.status(500).json(out);
   }
 });
 
@@ -450,8 +455,9 @@ app.get('/api/analytics/sources', async (req, res) => {
     const data = await cached(`aso_${req.client.id}_${start}_${end}`, () => getGA4Sources(start, end, ga4Creds));
     res.json(data);
   } catch (err) {
-    console.error('[analytics/sources]', err.message);
-    res.status(500).json({ error: err.message });
+    const out = describeApiError(err, 'Analytics');
+    console.error('[analytics/sources]', out.detail);
+    res.status(500).json(out);
   }
 });
 
