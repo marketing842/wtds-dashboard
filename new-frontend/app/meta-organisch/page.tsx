@@ -173,8 +173,8 @@ export default function MetaOrganischPage() {
       <div className="flex-1 lg:ml-64 flex flex-col overflow-hidden">
         <Header title={t('organisch.title')} description={t('organisch.desc')} />
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 lg:p-8 page-in">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-4 sm:p-6 lg:p-8 page-in min-w-0">
 
             {loading && (
               <div className="flex items-center justify-center py-24">
@@ -352,45 +352,47 @@ export default function MetaOrganischPage() {
                   {posts.length === 0 ? (
                     <p className="text-muted-foreground text-sm">{t('organisch.noData')}</p>
                   ) : (
-                    <div className="stat-card p-0 overflow-x-auto">
-                      <table className="w-full min-w-[560px] text-sm">
-                        <thead>
-                          <tr className="border-b border-[var(--border)]">
-                            <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('common.caption')}</th>
-                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('common.type')}</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.reach')}</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.likes')}</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.comments')}</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.shares')}</th>
-                            {totalSaved  > 0 && <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.saved')}</th>}
-                            <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">{t('organisch.table.date')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {posts.map((post, i) => {
-                            const typeKey = post.type ?? 'IMAGE'
-                            const badgeColor = TYPE_BADGE_COLOR[typeKey] ?? TYPE_BADGE_COLOR.IMAGE
-                            const badgeLabel = t(TYPE_BADGE_KEYS[typeKey] ?? TYPE_BADGE_KEYS.IMAGE)
-                            return (
-                              <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--border)]/50 transition-colors fade-in-up"
-                                style={{ animationDelay: `${i * 40}ms` }}>
-                                <td className="px-5 py-3 text-foreground max-w-xs truncate">{post.caption}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${badgeColor}`}>
-                                    {badgeLabel}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-right text-muted-foreground">{fmtK(post.reach ?? 0)}</td>
-                                <td className="px-4 py-3 text-right text-foreground font-semibold">{fmt(post.likes)}</td>
-                                <td className="px-4 py-3 text-right text-foreground">{fmt(post.comments)}</td>
-                                <td className="px-4 py-3 text-right text-foreground">{fmt(post.shares ?? 0)}</td>
-                                {totalSaved  > 0 && <td className="px-4 py-3 text-right text-foreground">{fmt(post.saved)}</td>}
-                                <td className="px-5 py-3 text-right text-muted-foreground">{formatDate(post.timestamp)}</td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                    <div className="stat-card p-0 overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm table-fixed min-w-[720px] lg:min-w-0">
+                          <thead>
+                            <tr className="border-b border-[var(--border)]">
+                              <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('common.caption')}</th>
+                              <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('common.type')}</th>
+                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.reach')}</th>
+                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.likes')}</th>
+                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.comments')}</th>
+                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.shares')}</th>
+                              {totalSaved  > 0 && <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.saved')}</th>}
+                              <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3 whitespace-nowrap">{t('organisch.table.date')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {posts.map((post, i) => {
+                              const typeKey = post.type ?? 'IMAGE'
+                              const badgeColor = TYPE_BADGE_COLOR[typeKey] ?? TYPE_BADGE_COLOR.IMAGE
+                              const badgeLabel = t(TYPE_BADGE_KEYS[typeKey] ?? TYPE_BADGE_KEYS.IMAGE)
+                              return (
+                                <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--border)]/50 transition-colors fade-in-up"
+                                  style={{ animationDelay: `${i * 40}ms` }}>
+                                  <td className="px-5 py-3 text-foreground truncate">{post.caption}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border whitespace-nowrap ${badgeColor}`}>
+                                      {badgeLabel}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap">{fmtK(post.reach ?? 0)}</td>
+                                  <td className="px-4 py-3 text-right text-foreground font-semibold whitespace-nowrap">{fmt(post.likes)}</td>
+                                  <td className="px-4 py-3 text-right text-foreground whitespace-nowrap">{fmt(post.comments)}</td>
+                                  <td className="px-4 py-3 text-right text-foreground whitespace-nowrap">{fmt(post.shares ?? 0)}</td>
+                                  {totalSaved  > 0 && <td className="px-4 py-3 text-right text-foreground whitespace-nowrap">{fmt(post.saved)}</td>}
+                                  <td className="px-5 py-3 text-right text-muted-foreground whitespace-nowrap">{formatDate(post.timestamp)}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>
