@@ -1,6 +1,6 @@
 'use client'
 
-import { HelpCircle } from 'lucide-react'
+import { Info } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useState, useRef, useLayoutEffect, type CSSProperties, type ReactNode } from 'react'
 import { useLanguage } from '@/lib/language-context'
@@ -93,7 +93,7 @@ export function MetricLabel({ label, tooltipKey, className = '' }: MetricLabelPr
         <button
           ref={triggerRef}
           type="button"
-          className="inline-flex items-center justify-center rounded-full p-0.5 opacity-50 hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 transition-opacity cursor-help flex-shrink-0"
+          className="inline-flex items-center justify-center rounded-full p-0.5 opacity-40 hover:opacity-90 focus:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 transition-opacity cursor-help flex-shrink-0"
           style={{ color: 'var(--text-muted)' }}
           aria-label={tip}
           onMouseEnter={show}
@@ -101,7 +101,7 @@ export function MetricLabel({ label, tooltipKey, className = '' }: MetricLabelPr
           onFocus={show}
           onBlur={hide}
         >
-          <HelpCircle className="w-3.5 h-3.5" aria-hidden />
+          <Info className="w-3 h-3" strokeWidth={2.25} aria-hidden />
         </button>
       </span>
       <FloatingTooltip text={tip} anchor={anchor} open={open} />
