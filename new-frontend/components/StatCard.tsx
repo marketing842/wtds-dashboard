@@ -17,7 +17,7 @@ export function StatCard({ label, value, change, icon: Icon, delay = 0, tooltipK
   const isUp = change?.isPositive === true
 
   return (
-    <div className="stat-card group relative overflow-hidden fade-in-up"
+    <div className="stat-card group relative fade-in-up"
          style={{ animationDelay: `${delay}ms` }}>
 
       {/* Subtle top-left glow orb */}
@@ -27,8 +27,8 @@ export function StatCard({ label, value, change, icon: Icon, delay = 0, tooltipK
       />
 
       {/* Label + icon row */}
-      <div className="flex items-center justify-between mb-4 relative">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em]"
+      <div className="flex items-center justify-between mb-4 relative z-[1]">
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] min-w-0 pr-2"
           style={{ color: 'var(--text-muted)' }}>
           <MetricLabel label={label} tooltipKey={tooltipKey} />
         </p>

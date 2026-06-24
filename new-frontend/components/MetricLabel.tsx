@@ -1,8 +1,13 @@
 'use client'
 
 import { HelpCircle } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { useState, useRef, useLayoutEffect, type CSSProperties, type ReactNode } from 'react'
 import { useLanguage } from '@/lib/language-context'
+
+const TIP_W = 256
+const TIP_EST_H = 88
+const GAP = 10
 
 interface MetricLabelProps {
   label: string
@@ -10,36 +15,97 @@ interface MetricLabelProps {
   className?: string
 }
 
+function computeTooltipStyle(anchor: DOMRect): CSSProperties {
+  const pad = 12
+  const width = Math.min(TIP_W, window.innerWidth - pad * 2)
+  let left = anchor.left + anchor.width / 2
+  const half = width / 2
+  if (left - half < pad) left = pad + half
+  if (left + half > window.innerWidth - pad) left = window.innerWidth - pad - half
+
+  const spaceAbove = anchor.top
+  const showAbove = spaceAbove > TIP_EST_H + GAP + 8
+
+  return {
+    position: 'fixed',
+    left,
+    top: showAbove ? anchor.top - GAP : anchor.bottom + GAP,
+    transform: showAbove ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
+    width,
+    zIndex: 9999,
+  }
+}
+
+function FloatingTooltip({ text, anchor, open }: { text: string; anchor: DOMRect | null; open: boolean }) {
+  const [style, setStyle] = useState<CSSProperties>({})
+
+  useLayoutEffect(() => {
+    if (!open || !anchor) return
+    setStyle(computeTooltipStyle(anchor))
+  }, [open, anchor, text])
+
+  if (!open || !anchor || typeof document === 'undefined') return null
+
+  return createPortal(
+    <div
+      role="tooltip"
+      className="px-3 py-2.5 rounded-lg text-xs font-normal normal-case tracking-normal leading-relaxed pointer-events-none"
+      style={{
+        ...style,
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        color: 'var(--text-primary)',
+        boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
+      }}
+    >
+      {text}
+    </div>,
+    document.body,
+  )
+}
+
 export function MetricLabel({ label, tooltipKey, className = '' }: MetricLabelProps) {
   const { t } = useLanguage()
   const tip = tooltipKey ? t(tooltipKey) : null
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
 
   if (!tip || tip === tooltipKey) {
     return <span className={className}>{label}</span>
   }
 
+  function show() {
+    if (triggerRef.current) {
+      setAnchor(triggerRef.current.getBoundingClientRect())
+      setOpen(true)
+    }
+  }
+
+  function hide() {
+    setOpen(false)
+  }
+
   return (
-    <span className={`inline-flex items-center gap-1 group/tip ${className}`}>
-      {label}
-      <span className="relative inline-flex">
-        <HelpCircle
-          className="w-3.5 h-3.5 opacity-50 group-hover/tip:opacity-100 transition-opacity cursor-help flex-shrink-0"
+    <>
+      <span className={`inline-flex items-center gap-1.5 ${className}`}>
+        <span>{label}</span>
+        <button
+          ref={triggerRef}
+          type="button"
+          className="inline-flex items-center justify-center rounded-full p-0.5 opacity-50 hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 transition-opacity cursor-help flex-shrink-0"
           style={{ color: 'var(--text-muted)' }}
-          aria-hidden
-        />
-        <span
-          role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 px-3 py-2 rounded-lg text-xs font-normal normal-case tracking-normal leading-relaxed opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 shadow-lg"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            color: 'var(--text-primary)',
-          }}
+          aria-label={tip}
+          onMouseEnter={show}
+          onMouseLeave={hide}
+          onFocus={show}
+          onBlur={hide}
         >
-          {tip}
-        </span>
+          <HelpCircle className="w-3.5 h-3.5" aria-hidden />
+        </button>
       </span>
-    </span>
+      <FloatingTooltip text={tip} anchor={anchor} open={open} />
+    </>
   )
 }
 
@@ -53,10 +119,10 @@ interface MetricKpiProps {
 export function MetricKpi({ label, value, tooltipKey, accent = false }: MetricKpiProps) {
   return (
     <div className="stat-card flex items-center justify-between py-4">
-      <p className="text-muted-foreground text-sm font-medium">
+      <p className="text-muted-foreground text-sm font-medium min-w-0 pr-3">
         <MetricLabel label={label} tooltipKey={tooltipKey} />
       </p>
-      <p className={`text-2xl font-bold ${accent ? 'text-accent' : 'text-foreground'}`}>{value}</p>
+      <p className={`text-2xl font-bold flex-shrink-0 ${accent ? 'text-accent' : 'text-foreground'}`}>{value}</p>
     </div>
   )
 }
