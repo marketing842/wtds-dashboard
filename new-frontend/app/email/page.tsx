@@ -11,6 +11,7 @@ import { DateRangeLabel } from '@/components/DateRangeLabel'
 
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
+import { AudiencesSection } from '@/components/AudiencesSection'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -107,7 +108,7 @@ export default function EmailPage() {
           if (attempt < MAX_ATTEMPTS - 1) continue
         }
       }
-      setError(lastErr || 'Failed to load data')
+      setError(lastErr || t('email.loadError'))
       setLoading(false)
     })()
 
@@ -124,24 +125,28 @@ export default function EmailPage() {
   const stats = cur ? [
     {
       label: t('email.stat.delivered'),
+      tooltipKey: 'tooltip.delivered',
       value: <AnimatedNumber value={cur.delivered} delay={0}   formatter={n => Math.round(n).toLocaleString('nl-NL')} />,
       change: pctChange(cur.delivered, prev?.delivered),
       icon: Mail,
     },
     {
       label: t('email.stat.openRate'),
+      tooltipKey: 'tooltip.openRate',
       value: <AnimatedNumber value={cur.open_rate} delay={100} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />,
       change: prev ? pctChange(cur.open_rate, prev.open_rate) : null,
       icon: CheckCircle,
     },
     {
       label: t('email.stat.clickRate'),
+      tooltipKey: 'tooltip.clickRate',
       value: <AnimatedNumber value={cur.click_rate} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />,
       change: prev ? pctChange(cur.click_rate, prev.click_rate) : null,
       icon: MousePointerClick,
     },
     {
       label: t('email.stat.ctor'),
+      tooltipKey: 'tooltip.ctor',
       value: <AnimatedNumber value={cur.ctor} delay={300} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />,
       change: prev ? pctChange(cur.ctor, prev.ctor) : null,
       icon: TrendingUp,
@@ -186,6 +191,7 @@ export default function EmailPage() {
                     <StatCard
                       key={s.label}
                       label={s.label}
+                      tooltipKey={s.tooltipKey}
                       value={s.value}
                       change={s.change !== null ? { value: Math.abs(s.change), isPositive: s.change >= 0 } : undefined}
                       icon={s.icon}
@@ -216,7 +222,7 @@ export default function EmailPage() {
                         <p className="text-accent font-bold text-xl">{fmt(bestFlow.open_rate)}%</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">CTOR</p>
+                        <p className="text-xs text-muted-foreground">{t('email.stat.ctor')}</p>
                         <p className="text-foreground font-bold text-xl">{fmt(bestFlow.ctor)}%</p>
                       </div>
                       <div>
@@ -264,7 +270,7 @@ export default function EmailPage() {
                               <p className="text-muted-foreground text-xs mt-1">{fmt(flow.click_rate)}%</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground text-xs font-medium">CTOR</p>
+                              <p className="text-muted-foreground text-xs font-medium">{t('email.stat.ctor')}</p>
                               <p className="text-lg font-bold text-foreground mt-1">{fmt(flow.ctor)}%</p>
                             </div>
                             <div>
@@ -278,6 +284,8 @@ export default function EmailPage() {
                     </div>
                   )}
                 </div>
+
+                <AudiencesSection />
               </>
             )}
           </div>

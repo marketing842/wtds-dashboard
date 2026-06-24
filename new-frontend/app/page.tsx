@@ -52,11 +52,11 @@ interface ChannelErrors {
   gsc?: string
 }
 
-const CHANNEL_LABELS: Record<string, string> = {
-  gAds: 'Google Ads',
-  meta: 'Meta Ads',
-  klaviyo: 'Email',
-  gsc: 'Search Console',
+const CHANNEL_LABEL_KEYS: Record<string, string> = {
+  gAds: 'dashboard.channel.gAds',
+  meta: 'dashboard.channel.meta',
+  klaviyo: 'dashboard.channel.email',
+  gsc: 'dashboard.channel.gsc',
 }
 
 export default function OverviewPage() {
@@ -139,20 +139,26 @@ export default function OverviewPage() {
   const prevTotalImpressions = (gAdsPrev?.impressions ?? 0) + (metaPrev?.impressions ?? 0)
 
   const spendChartData = [
-    { channel: 'Google Ads', spend: gAds?.cost ?? 0 },
-    { channel: 'Meta Ads', spend: meta?.spend ?? 0 },
+    { channel: tr('dashboard.channel.gAds'), spend: gAds?.cost ?? 0 },
+    { channel: tr('dashboard.channel.meta'), spend: meta?.spend ?? 0 },
   ]
 
   const leadsChartData = [
-    { channel: 'Google Ads', leads: gAds?.conversions ?? 0 },
-    { channel: 'Meta Ads', leads: metaLeads(meta) },
+    { channel: tr('dashboard.channel.gAds'), leads: gAds?.conversions ?? 0 },
+    { channel: tr('dashboard.channel.meta'), leads: metaLeads(meta) },
   ]
 
   const totalSpendForPie = (gAds?.cost ?? 0) + (meta?.spend ?? 0)
   const spendPieData = [
-    { name: 'Google Ads', value: gAds?.cost ?? 0, color: '#FF4D00' },
-    { name: 'Meta Ads', value: meta?.spend ?? 0, color: '#3b82f6' },
+    { name: tr('dashboard.channel.gAds'), value: gAds?.cost ?? 0, color: '#FF4D00' },
+    { name: tr('dashboard.channel.meta'), value: meta?.spend ?? 0, color: '#3b82f6' },
   ].filter(d => d.value > 0)
+
+  const ctrChartData = [
+    { channel: tr('dashboard.channel.gAds'), ctr: gAds?.ctr ?? 0 },
+    { channel: tr('dashboard.channel.meta'), ctr: meta?.ctr ?? 0 },
+    { channel: tr('dashboard.channel.gsc'), ctr: gsc?.ctr ?? 0 },
+  ]
 
   const insights: Array<{ type: 'good' | 'warn'; title: string; detail: string }> = []
 
@@ -160,22 +166,22 @@ export default function OverviewPage() {
     if (gAds.ctr > 3) {
       insights.push({
         type: 'good',
-        title: `Google Ads CTR ${fmt(gAds.ctr)}% — above benchmark`,
-        detail: 'Your click-through rate exceeds the typical 2–3% search benchmark.',
+        title: tr('dashboard.insight.gAdsCtrGood').replace('{ctr}', fmt(gAds.ctr)),
+        detail: tr('dashboard.insight.gAdsCtrGoodDetail'),
       })
     }
     if (gAds.cpa > 0 && gAds.cpa < 50) {
       insights.push({
         type: 'good',
-        title: `Strong CPA at ${fmtEur(gAds.cpa)}`,
-        detail: 'Cost per acquisition is well within an efficient range.',
+        title: tr('dashboard.insight.gAdsCpaGood').replace('{cpa}', fmtEur(gAds.cpa)),
+        detail: tr('dashboard.insight.gAdsCpaGoodDetail'),
       })
     }
     if (gAds.cpa > 100) {
       insights.push({
         type: 'warn',
-        title: `Google Ads CPA ${fmtEur(gAds.cpa)} — consider optimizing bids`,
-        detail: 'CPA is above €100. Review bid strategies or negative keywords.',
+        title: tr('dashboard.insight.gAdsCpaWarn').replace('{cpa}', fmtEur(gAds.cpa)),
+        detail: tr('dashboard.insight.gAdsCpaWarnDetail'),
       })
     }
   }
@@ -183,24 +189,24 @@ export default function OverviewPage() {
   if (klaviyo?.current?.open_rate > 30) {
     insights.push({
       type: 'good',
-      title: `Email open rate ${fmt(klaviyo.current.open_rate)}% — excellent engagement`,
-      detail: 'Open rate above 30% signals a highly engaged subscriber list.',
+      title: tr('dashboard.insight.emailOpenGood').replace('{rate}', fmt(klaviyo.current.open_rate)),
+      detail: tr('dashboard.insight.emailOpenGoodDetail'),
     })
   }
 
   if (meta?.ctr > 2) {
     insights.push({
       type: 'good',
-      title: `Meta CTR ${fmt(meta.ctr)}% — performing well`,
-      detail: 'Meta ad click-through rate is above the 1–2% industry average.',
+      title: tr('dashboard.insight.metaCtrGood').replace('{ctr}', fmt(meta.ctr)),
+      detail: tr('dashboard.insight.metaCtrGoodDetail'),
     })
   }
 
   if (gsc?.position > 0 && gsc.position < 5) {
     insights.push({
       type: 'good',
-      title: `Ranking avg position ${fmt(gsc.position)} in Google Search`,
-      detail: 'Strong organic visibility — top 5 average position across tracked queries.',
+      title: tr('dashboard.insight.seoPositionGood').replace('{pos}', fmt(gsc.position)),
+      detail: tr('dashboard.insight.seoPositionGoodDetail'),
     })
   }
 
@@ -233,7 +239,7 @@ export default function OverviewPage() {
                       <p className="text-red-700 dark:text-red-300 text-sm font-semibold mb-1">{tr('dashboard.errorChannels')}</p>
                       <ul className="text-red-700 dark:text-red-400 text-xs space-y-0.5">
                         {errorEntries.map(([ch, msg]) => (
-                          <li key={ch}><span className="font-semibold">{CHANNEL_LABELS[ch] ?? ch}:</span> {msg}</li>
+                          <li key={ch}><span className="font-semibold">{tr(CHANNEL_LABEL_KEYS[ch] ?? ch)}:</span> {msg}</li>
                         ))}
                       </ul>
                     </div>
@@ -246,24 +252,28 @@ export default function OverviewPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                       <StatCard
                         label={tr('dashboard.stat.totalSpend')}
+                        tooltipKey="tooltip.spend"
                         value={<AnimatedNumber value={totalSpend} delay={0}   formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />}
                         change={pctChg(totalSpend, prevTotalSpend) != null ? { value: Math.abs(pctChg(totalSpend, prevTotalSpend)!), isPositive: pctChg(totalSpend, prevTotalSpend)! <= 0 } : undefined}
                         icon={Euro} delay={0}
                       />
                       <StatCard
                         label={tr('dashboard.stat.totalLeads')}
+                        tooltipKey="tooltip.leads"
                         value={<AnimatedNumber value={totalLeads} delay={100} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                         change={pctChg(totalLeads, prevTotalLeads) != null ? { value: Math.abs(pctChg(totalLeads, prevTotalLeads)!), isPositive: pctChg(totalLeads, prevTotalLeads)! >= 0 } : undefined}
                         icon={Target} delay={100}
                       />
                       <StatCard
                         label={tr('dashboard.stat.avgCpl')}
+                        tooltipKey="tooltip.kpl"
                         value={avgCpl !== null ? <AnimatedNumber value={avgCpl} delay={200} formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} /> : '—'}
                         change={avgCpl !== null && prevAvgCpl !== null && pctChg(avgCpl, prevAvgCpl) != null ? { value: Math.abs(pctChg(avgCpl, prevAvgCpl)!), isPositive: pctChg(avgCpl, prevAvgCpl)! <= 0 } : undefined}
                         icon={Target} delay={200}
                       />
                       <StatCard
                         label={tr('dashboard.stat.totalImpressions')}
+                        tooltipKey="tooltip.impressions"
                         value={<AnimatedNumber value={totalImpressions} delay={300} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                         change={pctChg(totalImpressions, prevTotalImpressions) != null ? { value: Math.abs(pctChg(totalImpressions, prevTotalImpressions)!), isPositive: pctChg(totalImpressions, prevTotalImpressions)! >= 0 } : undefined}
                         icon={Eye} delay={300}
@@ -275,7 +285,7 @@ export default function OverviewPage() {
                       {/* Google Ads */}
                       <div className="stat-card channel-google fade-in-up-1">
                         <div className="flex items-center justify-between mb-4">
-                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#FF4D00' }}>Google Ads</p>
+                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#FF4D00' }}>{tr('dashboard.channel.gAds')}</p>
                           {loadingChannels.gAds
                             ? <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />
                             : <span className="w-2 h-2 rounded-full" style={{ background: gAds ? '#22C55E' : 'var(--text-subtle)', boxShadow: gAds ? '0 0 6px rgba(34,197,94,0.6)' : 'none' }} />
@@ -300,7 +310,7 @@ export default function OverviewPage() {
                       {/* Meta Ads */}
                       <div className="stat-card channel-meta fade-in-up-2">
                         <div className="flex items-center justify-between mb-4">
-                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#4F7EFF' }}>Meta Ads</p>
+                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#4F7EFF' }}>{tr('dashboard.channel.meta')}</p>
                           {loadingChannels.meta
                             ? <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />
                             : <span className="w-2 h-2 rounded-full" style={{ background: meta ? '#22C55E' : 'var(--text-subtle)', boxShadow: meta ? '0 0 6px rgba(34,197,94,0.6)' : 'none' }} />
@@ -325,7 +335,7 @@ export default function OverviewPage() {
                       {/* Email */}
                       <div className="stat-card channel-email fade-in-up-3">
                         <div className="flex items-center justify-between mb-4">
-                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#10B981' }}>Email</p>
+                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#10B981' }}>{tr('dashboard.channel.email')}</p>
                           {loadingChannels.klaviyo
                             ? <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />
                             : <span className="w-2 h-2 rounded-full" style={{ background: klaviyo?.current ? '#22C55E' : 'var(--text-subtle)', boxShadow: klaviyo?.current ? '0 0 6px rgba(34,197,94,0.6)' : 'none' }} />
@@ -333,7 +343,7 @@ export default function OverviewPage() {
                         </div>
                         {klaviyo?.current ? (
                           <div className="space-y-2.5">
-                            {([[tr('dashboard.channelLabel.delivered'), fmt(klaviyo.current.delivered, 0)], [tr('dashboard.channelLabel.openRate'), `${fmt(klaviyo.current.open_rate)}%`], ['CTOR', `${fmt(klaviyo.current.ctor)}%`]] as [string, string][]).map(([k, v]) => (
+                            {([[tr('dashboard.channelLabel.delivered'), fmt(klaviyo.current.delivered, 0)], [tr('dashboard.channelLabel.openRate'), `${fmt(klaviyo.current.open_rate)}%`], [tr('dashboard.channelLabel.ctor'), `${fmt(klaviyo.current.ctor)}%`]] as [string, string][]).map(([k, v]) => (
                               <div key={k} className="flex justify-between items-center">
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k}</span>
                                 <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{v}</span>
@@ -350,7 +360,7 @@ export default function OverviewPage() {
                       {/* Search Console */}
                       <div className="stat-card channel-search fade-in-up-4">
                         <div className="flex items-center justify-between mb-4">
-                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#8B5CF6' }}>Search Console</p>
+                          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#8B5CF6' }}>{tr('dashboard.channel.gsc')}</p>
                           {loadingChannels.gsc
                             ? <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--text-subtle)' }} />
                             : <span className="w-2 h-2 rounded-full" style={{ background: gsc ? '#22C55E' : 'var(--text-subtle)', boxShadow: gsc ? '0 0 6px rgba(34,197,94,0.6)' : 'none' }} />
@@ -377,7 +387,7 @@ export default function OverviewPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                       {/* Spend by Channel */}
                       <div className="stat-card">
-                        <p className="text-sm font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Spend by Channel</p>
+                        <p className="text-sm font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.spendByChannel')}</p>
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={spendChartData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
@@ -387,7 +397,7 @@ export default function OverviewPage() {
                               contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
                               labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
                               itemStyle={{ color: tooltipText, fontSize: 12 }}
-                              formatter={(v: number) => [fmtEur(v), 'Spend']}
+                              formatter={(v: number) => [fmtEur(v), tr('dashboard.channelLabel.spend')]}
                               cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
                             />
                             <Bar dataKey="spend" fill="#FF4D00" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
@@ -397,7 +407,7 @@ export default function OverviewPage() {
 
                       {/* Leads / Conversions by Channel */}
                       <div className="stat-card">
-                        <p className="text-sm font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Leads by Channel</p>
+                        <p className="text-sm font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.leadsByChannel')}</p>
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={leadsChartData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
@@ -407,7 +417,7 @@ export default function OverviewPage() {
                               contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
                               labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
                               itemStyle={{ color: tooltipText, fontSize: 12 }}
-                              formatter={(v: number) => [fmt(v, 0), 'Leads']}
+                              formatter={(v: number) => [fmt(v, 0), tr('dashboard.channelLabel.leads')]}
                               cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
                             />
                             <Bar dataKey="leads" fill="#10B981" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
@@ -420,7 +430,7 @@ export default function OverviewPage() {
                     {spendPieData.length > 0 && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                       <div className="stat-card">
-                        <p className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Kanaalverdeling — Spend %</p>
+                        <p className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.channelSpendPct')}</p>
                         <div className="flex items-center gap-6">
                           <ResponsiveContainer width="50%" height={200}>
                             <PieChart>
@@ -439,7 +449,7 @@ export default function OverviewPage() {
                                 contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
                                 labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
                                 itemStyle={{ color: tooltipText, fontSize: 12 }}
-                                formatter={(v: number) => [fmtEur(v), 'Spend']}
+                                formatter={(v: number) => [fmtEur(v), tr('dashboard.channelLabel.spend')]}
                               />
                             </PieChart>
                           </ResponsiveContainer>
@@ -470,14 +480,10 @@ export default function OverviewPage() {
 
                       {/* CTR comparison */}
                       <div className="stat-card">
-                        <p className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>CTR by Channel</p>
+                        <p className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.ctrByChannel')}</p>
                         <ResponsiveContainer width="100%" height={200}>
                           <BarChart
-                            data={[
-                              { channel: 'Google Ads', ctr: gAds?.ctr ?? 0 },
-                              { channel: 'Meta Ads',   ctr: meta?.ctr ?? 0 },
-                              { channel: 'Search',     ctr: gsc?.ctr ?? 0 },
-                            ]}
+                            data={ctrChartData}
                             margin={{ top: 0, right: 8, left: 8, bottom: 0 }}
                           >
                             <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
@@ -487,7 +493,7 @@ export default function OverviewPage() {
                               contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
                               labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
                               itemStyle={{ color: tooltipText, fontSize: 12 }}
-                              formatter={(v: number) => [`${fmt(v)}%`, 'CTR']}
+                              formatter={(v: number) => [`${fmt(v)}%`, tr('dashboard.channelLabel.ctr')]}
                               cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
                             />
                             <Bar dataKey="ctr" fill="#8B5CF6" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
@@ -501,9 +507,9 @@ export default function OverviewPage() {
                     {insights.length > 0 && (
                       <div>
                         <div className="flex items-center gap-2 mb-4">
-                          <p className="text-foreground font-bold text-base">Performance Insights</p>
+                          <p className="text-foreground font-bold text-base">{tr('dashboard.insights.title')}</p>
                           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
-                            {insights.length} {insights.length === 1 ? 'insight' : 'insights'}
+                            {insights.length} {insights.length === 1 ? tr('dashboard.insights.one') : tr('dashboard.insights.many')}
                           </span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

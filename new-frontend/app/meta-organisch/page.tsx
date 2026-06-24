@@ -13,6 +13,7 @@ import {
 } from 'recharts'
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
+import { MetricLabel } from '@/components/MetricLabel'
 import type { ReactNode } from 'react'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
@@ -27,11 +28,18 @@ function formatDate(ts: string) {
   return new Date(ts).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short' })
 }
 
-const TYPE_BADGE: Record<string, { label: string; color: string }> = {
-  IMAGE:          { label: 'Photo',    color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  VIDEO:          { label: 'Video',    color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
-  CAROUSEL_ALBUM: { label: 'Carousel', color: 'bg-pink-500/20 text-pink-300 border-pink-500/30' },
-  REELS:          { label: 'Reel',     color: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
+const TYPE_BADGE_KEYS: Record<string, string> = {
+  IMAGE:          'organisch.badge.photo',
+  VIDEO:          'organisch.badge.video',
+  CAROUSEL_ALBUM: 'organisch.badge.carousel',
+  REELS:          'organisch.badge.reel',
+}
+
+const TYPE_BADGE_COLOR: Record<string, string> = {
+  IMAGE:          'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  VIDEO:          'bg-purple-500/20 text-purple-300 border-purple-500/30',
+  CAROUSEL_ALBUM: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
+  REELS:          'bg-orange-500/20 text-orange-300 border-orange-500/30',
 }
 
 function toChartData(posts: any[], startDate: string, endDate: string) {
@@ -67,13 +75,19 @@ function toChartData(posts: any[], startDate: string, endDate: string) {
   return [...groups.values()].sort((a, b) => a.sortKey < b.sortKey ? -1 : 1)
 }
 
-function KpiCard({ label, value, sub, icon: Icon, accent = false, delay = 0 }: {
-  label: string; value: ReactNode; sub?: ReactNode; icon?: any; accent?: boolean; delay?: number
+function postScore(p: any) {
+  return (p.reach || 0) + (p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saved ?? 0)
+}
+
+function KpiCard({ label, value, sub, icon: Icon, accent = false, delay = 0, tooltipKey }: {
+  label: string; value: ReactNode; sub?: ReactNode; icon?: any; accent?: boolean; delay?: number; tooltipKey?: string
 }) {
   return (
     <div className="stat-card flex flex-col gap-2 fade-in-up" style={{ animationDelay: `${delay}ms` }}>
       <div className="flex items-center justify-between">
-        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">{label}</p>
+        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+          <MetricLabel label={label} tooltipKey={tooltipKey} />
+        </p>
         {Icon && (
           <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center transition-transform duration-300 hover:scale-110">
             <Icon className="w-4 h-4 text-accent" />
@@ -134,11 +148,9 @@ export default function MetaOrganischPage() {
     return () => { active = false }
   }, [startDate, endDate])
 
-  const topPost = posts.length > 0
-    ? posts.reduce((best, p) =>
-        ((p.reach || 0) + p.likes + p.comments) > ((best.reach || 0) + best.likes + best.comments) ? p : best,
-      posts[0])
-    : null
+  const topPosts = [...posts]
+    .sort((a, b) => postScore(b) - postScore(a))
+    .slice(0, 3)
 
   const totalLikes    = posts.reduce((s, p) => s + (p.likes    ?? 0), 0)
   const totalComments = posts.reduce((s, p) => s + (p.comments ?? 0), 0)
@@ -173,7 +185,7 @@ export default function MetaOrganischPage() {
 
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-700 dark:text-red-300 text-sm mb-8">
-                <p className="font-semibold mb-1">Instagram API error</p>
+                <p className="font-semibold mb-1">{t('organisch.apiError')}</p>
                 <p>{error}</p>
               </div>
             )}
@@ -214,15 +226,23 @@ export default function MetaOrganischPage() {
                   />
                   <KpiCard
                     label={t('organisch.stat.reach')}
+                    tooltipKey="tooltip.reach"
                     value={<AnimatedNumber value={reach} delay={100} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     sub={t('organisch.uniqueReach')}
                     icon={Eye} accent delay={100}
                   />
                   <KpiCard
                     label={t('organisch.stat.engagement')}
+                    tooltipKey="tooltip.engagement"
                     value={<AnimatedNumber value={engagementRate} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />}
                     sub={t('organisch.engagementSub')}
                     icon={TrendingUp} accent delay={200}
+                  />
+                  <KpiCard
+                    label={t('organisch.stat.shares')}
+                    tooltipKey="tooltip.shares"
+                    value={<AnimatedNumber value={totalShares} delay={250} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
+                    icon={Share2} accent delay={250}
                   />
                   <KpiCard
                     label={t('organisch.stat.likes')}
@@ -234,49 +254,54 @@ export default function MetaOrganischPage() {
                     value={<AnimatedNumber value={totalComments} delay={400} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                     icon={MessageCircle} delay={400}
                   />
-                  {totalShares > 0 && <KpiCard label={t('organisch.stat.shares')} value={<AnimatedNumber value={totalShares} delay={500} formatter={n => Math.round(n).toLocaleString('nl-NL')} />} icon={Share2} delay={500} />}
-                  {totalShares === 0 && totalSaved > 0 && <KpiCard label={t('organisch.stat.saved')} value={<AnimatedNumber value={totalSaved} delay={500} formatter={n => Math.round(n).toLocaleString('nl-NL')} />} icon={Bookmark} delay={500} />}
-                  {totalShares === 0 && totalSaved === 0 && summary.profile_views > 0 && (
-                    <KpiCard label={t('organisch.stat.profileViews')} value={<AnimatedNumber value={summary.profile_views} delay={500} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />} icon={Users} delay={500} />
+                  {totalSaved > 0 && (
+                    <KpiCard
+                      label={t('organisch.stat.saved')}
+                      value={<AnimatedNumber value={totalSaved} delay={500} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
+                      icon={Bookmark} delay={500}
+                    />
+                  )}
+                  {summary.profile_views > 0 && (
+                    <KpiCard
+                      label={t('organisch.stat.profileViews')}
+                      value={<AnimatedNumber value={summary.profile_views} delay={500} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
+                      icon={Users} delay={500}
+                    />
                   )}
                 </div>
 
-                {/* Best post + Chart side by side */}
+                {/* Best posts + Chart */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                  {/* Best post */}
-                  {topPost ? (
+                  {topPosts.length > 0 ? (
                     <div className="stat-card border-l-4 border-l-pink-500 flex flex-col">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">
-                        {t('organisch.bestPost')}
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-4">
+                        {t('organisch.bestPosts')}
                       </p>
-                      <p className="text-foreground font-medium text-sm mb-5 leading-relaxed flex-1">{topPost.caption}</p>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        {topPost.reach > 0 && (
-                          <div className="bg-[var(--border)]/30 rounded-lg p-3">
-                            <p className="text-muted-foreground text-xs mb-1">{t('organisch.stat.reach')}</p>
-                            <p className="text-foreground font-bold text-xl">{fmtK(topPost.reach)}</p>
-                          </div>
-                        )}
-                        <div className="bg-[var(--border)]/30 rounded-lg p-3">
-                          <p className="text-muted-foreground text-xs mb-1">Likes</p>
-                          <p className="text-foreground font-bold text-xl">{fmt(topPost.likes)}</p>
-                        </div>
-                        <div className="bg-[var(--border)]/30 rounded-lg p-3">
-                          <p className="text-muted-foreground text-xs mb-1">{t('organisch.stat.comments')}</p>
-                          <p className="text-foreground font-bold text-xl">{fmt(topPost.comments)}</p>
-                        </div>
-                        {topPost.engagement_rate > 0 && (
-                          <div className="bg-accent/10 rounded-lg p-3">
-                            <p className="text-muted-foreground text-xs mb-1">{t('organisch.stat.engagement')}</p>
-                            <p className="text-accent font-bold text-xl">{fmt(topPost.engagement_rate, 1)}%</p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${(TYPE_BADGE[topPost.type] ?? TYPE_BADGE.IMAGE).color}`}>
-                          {(TYPE_BADGE[topPost.type] ?? TYPE_BADGE.IMAGE).label}
-                        </span>
-                        <span className="text-muted-foreground text-xs">{formatDate(topPost.timestamp)}</span>
+                      <div className="space-y-4 flex-1">
+                        {topPosts.map((post, idx) => {
+                          const typeKey = post.type ?? 'IMAGE'
+                          const badgeColor = TYPE_BADGE_COLOR[typeKey] ?? TYPE_BADGE_COLOR.IMAGE
+                          const badgeLabel = t(TYPE_BADGE_KEYS[typeKey] ?? TYPE_BADGE_KEYS.IMAGE)
+                          return (
+                            <div key={post.id ?? idx} className="bg-[var(--border)]/20 rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-accent font-black text-lg">#{idx + 1}</span>
+                                <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${badgeColor}`}>
+                                  {badgeLabel}
+                                </span>
+                              </div>
+                              <p className="text-foreground font-medium text-sm mb-3 leading-relaxed line-clamp-2">{post.caption}</p>
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                {post.reach > 0 && (
+                                  <div><span className="text-muted-foreground">{t('organisch.stat.reach')}</span><p className="font-bold text-foreground">{fmtK(post.reach)}</p></div>
+                                )}
+                                <div><span className="text-muted-foreground">{t('organisch.stat.likes')}</span><p className="font-bold text-foreground">{fmt(post.likes)}</p></div>
+                                <div><span className="text-muted-foreground">{t('organisch.stat.shares')}</span><p className="font-bold text-foreground">{fmt(post.shares ?? 0)}</p></div>
+                              </div>
+                              <p className="text-muted-foreground text-xs mt-2">{formatDate(post.timestamp)}</p>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   ) : <div />}
@@ -307,9 +332,9 @@ export default function MetaOrganischPage() {
                               wrapperStyle={{ fontSize: 12, paddingTop: 10, color: chartTick }}
                               iconType="circle" iconSize={8}
                             />
-                            {totalComments > 0 && <Bar dataKey="comments" name="Reacties"   stackId="a" fill="#3b82f6" radius={[0,0,0,0]} animationDuration={1200} animationBegin={100} />}
-                            {totalSaved  > 0 && <Bar dataKey="saved"    name="Opgeslagen" stackId="a" fill="#f59e0b" radius={[0,0,0,0]} animationDuration={1200} animationBegin={200} />}
-                            {totalShares > 0 && <Bar dataKey="shares"   name="Shares"     stackId="a" fill="#FF4D00" radius={[4,4,0,0]} animationDuration={1200} animationBegin={300} />}
+                            {totalComments > 0 && <Bar dataKey="comments" name={t('organisch.stat.comments')} stackId="a" fill="#3b82f6" radius={[0,0,0,0]} animationDuration={1200} animationBegin={100} />}
+                            {totalSaved  > 0 && <Bar dataKey="saved"    name={t('organisch.stat.saved')}    stackId="a" fill="#f59e0b" radius={[0,0,0,0]} animationDuration={1200} animationBegin={200} />}
+                            {totalShares > 0 && <Bar dataKey="shares"   name={t('organisch.stat.shares')}   stackId="a" fill="#FF4D00" radius={[4,4,0,0]} animationDuration={1200} animationBegin={300} />}
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
@@ -321,7 +346,7 @@ export default function MetaOrganischPage() {
                 <div>
                   <div className="mb-4">
                     <p className="text-foreground font-bold text-xl">{t('organisch.recentPosts')}</p>
-                    <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · {posts.length} post{posts.length !== 1 ? 's' : ''}</p>
+                    <p className="text-muted-foreground text-sm mt-1"><DateRangeLabel start={startDate} end={endDate} /> · {posts.length} {t('common.posts')}</p>
                   </div>
 
                   {posts.length === 0 ? (
@@ -331,32 +356,34 @@ export default function MetaOrganischPage() {
                       <table className="w-full min-w-[560px] text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
-                            <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">Caption</th>
-                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">Type</th>
+                            <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('common.caption')}</th>
+                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('common.type')}</th>
                             <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.reach')}</th>
                             <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.likes')}</th>
                             <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.comments')}</th>
-                            {totalShares > 0 && <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.shares')}</th>}
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.shares')}</th>
                             {totalSaved  > 0 && <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.saved')}</th>}
                             <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3">{t('organisch.table.date')}</th>
                           </tr>
                         </thead>
                         <tbody>
                           {posts.map((post, i) => {
-                            const badge = TYPE_BADGE[post.type] ?? TYPE_BADGE.IMAGE
+                            const typeKey = post.type ?? 'IMAGE'
+                            const badgeColor = TYPE_BADGE_COLOR[typeKey] ?? TYPE_BADGE_COLOR.IMAGE
+                            const badgeLabel = t(TYPE_BADGE_KEYS[typeKey] ?? TYPE_BADGE_KEYS.IMAGE)
                             return (
                               <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--border)]/50 transition-colors fade-in-up"
                                 style={{ animationDelay: `${i * 40}ms` }}>
                                 <td className="px-5 py-3 text-foreground max-w-xs truncate">{post.caption}</td>
                                 <td className="px-4 py-3">
-                                  <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${badge.color}`}>
-                                    {badge.label}
+                                  <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${badgeColor}`}>
+                                    {badgeLabel}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 text-right text-muted-foreground">{fmtK(post.reach ?? 0)}</td>
                                 <td className="px-4 py-3 text-right text-foreground font-semibold">{fmt(post.likes)}</td>
                                 <td className="px-4 py-3 text-right text-foreground">{fmt(post.comments)}</td>
-                                {totalShares > 0 && <td className="px-4 py-3 text-right text-foreground">{fmt(post.shares)}</td>}
+                                <td className="px-4 py-3 text-right text-foreground">{fmt(post.shares ?? 0)}</td>
                                 {totalSaved  > 0 && <td className="px-4 py-3 text-right text-foreground">{fmt(post.saved)}</td>}
                                 <td className="px-5 py-3 text-right text-muted-foreground">{formatDate(post.timestamp)}</td>
                               </tr>

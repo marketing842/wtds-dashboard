@@ -6,8 +6,9 @@ import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
+import { MetricKpi } from '@/components/MetricLabel'
 import { useDateRange } from '@/lib/date-range-context'
-import { Eye, MousePointerClick, Euro, TrendingUp, Loader2, ShoppingCart, Play, Film } from 'lucide-react'
+import { Eye, MousePointerClick, Euro, Loader2, ShoppingCart, Film, Image } from 'lucide-react'
 
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
@@ -84,7 +85,6 @@ export default function MetaPage() {
   const active = campaigns.filter(c => c.status === 'ACTIVE')
   const inactive = campaigns.filter(c => c.status !== 'ACTIVE')
 
-  // Detect leads vs purchase campaign type for adaptive secondary KPIs
   const isLeadsCampaign = cur ? (cur.leads > 0 || cur.purchase_value === 0) : false
   const cpl = cur && cur.leads > 0 && cur.spend > 0 ? cur.spend / cur.leads : 0
 
@@ -113,28 +113,31 @@ export default function MetaPage() {
 
             {!loading && !error && cur && (
               <>
-                {/* KPI cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                   <StatCard
                     label={t('meta.stat.impressions')}
-                    value={<AnimatedNumber value={cur.impressions} delay={0}   formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
+                    tooltipKey="tooltip.impressions"
+                    value={<AnimatedNumber value={cur.impressions} delay={0} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
                     icon={Eye} delay={0}
                   />
                   <StatCard
                     label={t('meta.stat.clicks')}
+                    tooltipKey="tooltip.clicks"
                     value={<AnimatedNumber value={cur.clicks} delay={100} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
                     icon={MousePointerClick} delay={100}
                   />
                   <StatCard
                     label={t('meta.stat.spend')}
+                    tooltipKey="tooltip.spend"
                     value={<AnimatedNumber value={cur.spend} delay={200} formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />}
                     change={pctChg(cur.spend, prev?.spend) != null ? { value: Math.abs(pctChg(cur.spend, prev?.spend)!), isPositive: pctChg(cur.spend, prev?.spend)! <= 0 } : undefined}
                     icon={Euro} delay={200}
                   />
                   <StatCard
-                    label={cur.leads > 0 ? 'Leads' : 'Purchases'}
+                    label={cur.leads > 0 ? t('meta.stat.leads') : t('meta.stat.purchases')}
+                    tooltipKey={cur.leads > 0 ? 'tooltip.leads' : 'tooltip.conversions'}
                     value={<AnimatedNumber value={cur.leads > 0 ? cur.leads : cur.purchases} delay={300} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
                     change={(() => {
                       const v = cur.leads > 0 ? pctChg(cur.leads, prev?.leads) : pctChg(cur.purchases, prev?.purchases)
@@ -144,98 +147,103 @@ export default function MetaPage() {
                   />
                 </div>
 
-                {/* Secondary KPIs — adapts to leads vs purchase campaigns */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  {[
-                    { label: 'CTR', value: `${fmt(cur.ctr)}%` },
-                    { label: 'Avg. CPC', value: fmtEur(cur.cpc) },
-                    isLeadsCampaign
-                      ? { label: 'Cost per Lead', value: cpl > 0 ? fmtEur(cpl) : '—' }
-                      : { label: 'ROAS', value: cur.roas > 0 ? `${fmt(cur.roas)}x` : '—' },
-                    isLeadsCampaign
-                      ? { label: 'Total Leads', value: fmt(cur.leads, 0) }
-                      : { label: 'Revenue', value: cur.purchase_value > 0 ? fmtEur(cur.purchase_value) : '—' },
-                  ].map(m => (
-                    <div key={m.label} className="stat-card flex items-center justify-between py-4">
-                      <p className="text-muted-foreground text-sm font-medium">{m.label}</p>
-                      <p className="text-2xl font-bold text-accent">{m.value}</p>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                  <MetricKpi label={t('meta.stat.frequency')} value={cur.frequency > 0 ? fmt(cur.frequency) : '—'} tooltipKey="tooltip.frequency" />
+                  <MetricKpi label={t('meta.stat.cpm')} value={cur.cpm > 0 ? fmtEur(cur.cpm) : '—'} tooltipKey="tooltip.kpm" />
+                  <MetricKpi label={t('meta.stat.uniqueCtr')} value={cur.unique_ctr > 0 ? `${fmt(cur.unique_ctr)}%` : '—'} tooltipKey="tooltip.uniqueCtr" />
+                  <MetricKpi label={t('meta.stat.ctr')} value={`${fmt(cur.ctr)}%`} tooltipKey="tooltip.ctr" />
                 </div>
 
-                {/* Top Ads / Creatives */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <MetricKpi label={t('meta.stat.cpc')} value={fmtEur(cur.cpc)} tooltipKey="tooltip.kpk" />
+                  {isLeadsCampaign
+                    ? <MetricKpi label={t('meta.stat.cpl')} value={cpl > 0 ? fmtEur(cpl) : '—'} tooltipKey="tooltip.kpl" accent />
+                    : <MetricKpi label={t('meta.stat.roas')} value={cur.roas > 0 ? `${fmt(cur.roas)}x` : '—'} tooltipKey="tooltip.roas" accent />}
+                  {isLeadsCampaign
+                    ? <MetricKpi label={t('meta.stat.leads')} value={fmt(cur.leads, 0)} tooltipKey="tooltip.leads" />
+                    : <MetricKpi label={t('meta.stat.revenue')} value={cur.purchase_value > 0 ? fmtEur(cur.purchase_value) : '—'} tooltipKey="tooltip.roas" />}
+                  <MetricKpi label={t('meta.stat.reach')} value={cur.reach >= 1000 ? `${fmt(cur.reach / 1000)}K` : fmt(cur.reach, 0)} tooltipKey="tooltip.reach" />
+                </div>
+
                 {creatives.length > 0 && (
                   <div className="mb-8">
-                    <p className="text-foreground font-bold text-lg mb-4">Top Ads — Creative Performance</p>
+                    <p className="text-foreground font-bold text-lg mb-1">{t('meta.topAds')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('meta.topAdsDesc')}</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {creatives.map((ad, i) => (
                         <div key={ad.id} className="stat-card border-t-2 border-t-accent/40 relative">
-                          {/* Rank badge */}
                           <div className="flex items-center justify-between mb-3">
                             <span className={`text-2xl font-black ${RANK_COLOR[i]}`}>#{i + 1}</span>
-                            <div className="flex items-center gap-2">
-                              {ad.is_video && (
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              {ad.is_video ? (
                                 <span className="flex items-center gap-1 text-xs text-purple-700 dark:text-purple-300 bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 rounded-full">
-                                  <Film className="w-3 h-3" /> Video
+                                  <Film className="w-3 h-3" /> {t('meta.badge.video')}
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-300 bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded-full">
+                                  <Image className="w-3 h-3" /> {t('meta.badge.static')}
                                 </span>
                               )}
                               <span className={`text-xs px-2 py-0.5 rounded-full border ${
                                 ad.status === 'ACTIVE'
                                   ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
                                   : 'bg-slate-500/20 text-muted-foreground border-slate-500/30'
-                              }`}>{ad.status === 'ACTIVE' ? 'Active' : ad.status}</span>
+                              }`}>{ad.status === 'ACTIVE' ? t('common.active') : t('common.inactive')}</span>
                             </div>
                           </div>
 
-                          {/* Ad name */}
-                          <p className="text-foreground text-sm font-semibold mb-4 leading-snug line-clamp-2">{ad.name}</p>
+                          <p className="text-foreground text-sm font-semibold mb-1 leading-snug line-clamp-2">{ad.name}</p>
+                          {ad.adset_name && (
+                            <p className="text-muted-foreground text-xs mb-4">
+                              {t('meta.badge.adset')}: {ad.adset_name}
+                            </p>
+                          )}
 
-                          {/* Metrics grid */}
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <p className="text-muted-foreground text-xs mb-0.5">Spend</p>
+                              <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.spendShort')}</p>
                               <p className="text-foreground text-sm font-bold">{fmtEur(ad.spend)}</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground text-xs mb-0.5">CTR</p>
+                              <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.ctr')}</p>
                               <p className="text-accent text-sm font-bold">{fmt(ad.ctr)}%</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground text-xs mb-0.5">Impressions</p>
+                              <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.impressions')}</p>
                               <p className="text-foreground text-sm font-bold">
                                 {ad.impressions >= 1000 ? `${fmt(ad.impressions / 1000)}K` : ad.impressions}
                               </p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground text-xs mb-0.5">{ad.leads > 0 ? 'Leads' : 'Purchases'}</p>
+                              <p className="text-muted-foreground text-xs mb-0.5">{ad.leads > 0 ? t('meta.stat.leads') : t('meta.stat.purchases')}</p>
                               <p className="text-foreground text-sm font-bold">{ad.leads > 0 ? ad.leads : ad.purchases}</p>
                             </div>
                             {ad.thumbstop_rate != null && (
                               <div>
-                                <p className="text-muted-foreground text-xs mb-0.5">Thumbstop</p>
+                                <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.thumbstop')}</p>
                                 <p className="text-purple-700 dark:text-purple-300 text-sm font-bold">{fmt(ad.thumbstop_rate)}%</p>
                               </div>
                             )}
                             {ad.hold_rate != null && (
                               <div>
-                                <p className="text-muted-foreground text-xs mb-0.5">Hold Rate (30s)</p>
+                                <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.holdRate')}</p>
                                 <p className="text-blue-700 dark:text-blue-300 text-sm font-bold">{fmt(ad.hold_rate)}%</p>
                               </div>
                             )}
                             {ad.avg_watch_sec != null && (
                               <div className="col-span-2">
-                                <p className="text-muted-foreground text-xs mb-0.5">Avg. Watch Time</p>
+                                <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.avgWatch')}</p>
                                 <p className="text-emerald-700 dark:text-emerald-300 text-sm font-bold">{fmt(ad.avg_watch_sec)}s</p>
                               </div>
                             )}
                             {ad.roas > 0 ? (
                               <div>
-                                <p className="text-muted-foreground text-xs mb-0.5">ROAS</p>
+                                <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.roas')}</p>
                                 <p className="text-accent text-sm font-bold">{fmt(ad.roas)}x</p>
                               </div>
                             ) : ad.leads > 0 && ad.spend > 0 ? (
                               <div>
-                                <p className="text-muted-foreground text-xs mb-0.5">CPL</p>
+                                <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.cpl')}</p>
                                 <p className="text-accent text-sm font-bold">{fmtEur(ad.spend / ad.leads)}</p>
                               </div>
                             ) : null}
@@ -246,17 +254,16 @@ export default function MetaPage() {
                   </div>
                 )}
 
-                {/* Active campaigns */}
                 <div className="mb-6">
                   <div className="mb-4">
-                    <p className="text-foreground font-bold text-lg">Campaigns</p>
+                    <p className="text-foreground font-bold text-lg">{t('meta.campaigns')}</p>
                     <p className="text-muted-foreground text-sm mt-1">
-                      <DateRangeLabel start={startDate} end={endDate} /> · {active.length} active{inactive.length > 0 ? `, ${inactive.length} inactive` : ''}
+                      <DateRangeLabel start={startDate} end={endDate} /> · {active.length} {t('meta.campaignsActive')}{inactive.length > 0 ? `, ${inactive.length} ${t('meta.campaignsInactive')}` : ''}
                     </p>
                   </div>
 
                   {campaigns.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No campaign data for this period.</p>
+                    <p className="text-muted-foreground text-sm">{t('meta.noCampaigns')}</p>
                   ) : (
                     <div className="space-y-4">
                       {campaigns.map(c => (
@@ -268,20 +275,20 @@ export default function MetaPage() {
                                 ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
                                 : 'bg-slate-500/20 text-muted-foreground border-slate-500/30'
                             }`}>
-                              {c.status === 'ACTIVE' ? 'Active' : c.status}
+                              {c.status === 'ACTIVE' ? t('common.active') : t('common.inactive')}
                             </span>
                           </div>
 
                           <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
                             {[
-                              { label: 'Impressions', value: c.impressions >= 1000 ? `${fmt(c.impressions / 1000)}K` : String(c.impressions) },
-                              { label: 'Clicks', value: fmt(c.clicks, 0) },
-                              { label: 'CTR', value: `${fmt(c.ctr)}%` },
-                              { label: 'Spend', value: fmtEur(c.spend) },
-                              { label: c.leads > 0 ? 'Leads' : 'Purchases', value: String(c.leads > 0 ? c.leads : c.purchases) },
+                              { label: t('meta.stat.impressions'), value: c.impressions >= 1000 ? `${fmt(c.impressions / 1000)}K` : String(c.impressions) },
+                              { label: t('meta.stat.clicks'), value: fmt(c.clicks, 0) },
+                              { label: t('meta.stat.ctr'), value: `${fmt(c.ctr)}%` },
+                              { label: t('meta.stat.spendShort'), value: fmtEur(c.spend) },
+                              { label: c.leads > 0 ? t('meta.stat.leads') : t('meta.stat.purchases'), value: String(c.leads > 0 ? c.leads : c.purchases) },
                               c.roas > 0
-                                ? { label: 'ROAS', value: `${fmt(c.roas)}x`, accent: true }
-                                : { label: c.leads > 0 ? 'CPL' : 'ROAS', value: c.leads > 0 && c.spend > 0 ? fmtEur(c.spend / c.leads) : '—', accent: true },
+                                ? { label: t('meta.stat.roas'), value: `${fmt(c.roas)}x`, accent: true }
+                                : { label: c.leads > 0 ? t('meta.stat.cpl') : t('meta.stat.roas'), value: c.leads > 0 && c.spend > 0 ? fmtEur(c.spend / c.leads) : '—', accent: true },
                             ].map(m => (
                               <div key={m.label}>
                                 <p className="text-muted-foreground text-xs mb-1">{m.label}</p>

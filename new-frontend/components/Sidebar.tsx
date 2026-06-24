@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  Target, TrendingUp, Users, Mail,
+  Target, TrendingUp, Mail,
   BarChart3, Globe, Search, Camera, LogOut, Menu, X,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -16,7 +16,6 @@ const NAV = [
   { href: '/',               key: 'sidebar.nav.dashboard',  icon: BarChart3  },
   { href: '/campaigns',      key: 'sidebar.nav.campaigns',  icon: Target     },
   { href: '/analytics',      key: 'sidebar.nav.analytics',  icon: TrendingUp },
-  { href: '/audiences',      key: 'sidebar.nav.audiences',  icon: Users      },
   { href: '/email',          key: 'sidebar.nav.email',      icon: Mail       },
   { href: '/meta',           key: 'sidebar.nav.meta',       icon: Globe      },
   { href: '/meta-organisch', key: 'sidebar.nav.organisch',  icon: Camera     },

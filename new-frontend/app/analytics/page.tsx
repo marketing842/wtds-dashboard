@@ -182,7 +182,7 @@ export default function AnalyticsPage() {
                             contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 8 }}
                             labelStyle={{ color: tooltipText, fontSize: 12 }}
                             itemStyle={{ color: '#FF4D00', fontSize: 12 }}
-                            formatter={(v: number) => [fmt(v), 'Sessions']}
+                            formatter={(v: number) => [fmt(v), t('analytics.stat.sessions')]}
                           />
                           <Bar dataKey="sessions" fill="#FF4D00" radius={[0, 4, 4, 0]} animationDuration={1200} animationBegin={100} />
                         </BarChart>

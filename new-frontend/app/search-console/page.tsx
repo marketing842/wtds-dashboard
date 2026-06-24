@@ -121,24 +121,28 @@ export default function SearchConsolePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                   <StatCard
                     label={t('search.stat.clicks')}
+                    tooltipKey="tooltip.clicks"
                     value={<AnimatedNumber value={cur.clicks} delay={0}   formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
                     icon={MousePointerClick} delay={0}
                   />
                   <StatCard
                     label={t('search.stat.impressions')}
+                    tooltipKey="tooltip.impressions"
                     value={<AnimatedNumber value={cur.impressions} delay={100} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
                     icon={Eye} delay={100}
                   />
                   <StatCard
                     label={t('search.stat.ctr')}
+                    tooltipKey="tooltip.ctr"
                     value={<AnimatedNumber value={cur.ctr} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />}
                     change={pctChg(cur.ctr, prev?.ctr) != null ? { value: Math.abs(pctChg(cur.ctr, prev?.ctr)!), isPositive: pctChg(cur.ctr, prev?.ctr)! >= 0 } : undefined}
                     icon={TrendingUp} delay={200}
                   />
                   <StatCard
                     label={t('search.stat.position')}
+                    tooltipKey="tooltip.position"
                     value={<AnimatedNumber value={cur.position} delay={300} formatter={n => n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })} />}
                     change={pctChg(cur.position, prev?.position) != null ? { value: Math.abs(pctChg(cur.position, prev?.position)!), isPositive: pctChg(cur.position, prev?.position)! <= 0 } : undefined}
                     icon={Search} delay={300}

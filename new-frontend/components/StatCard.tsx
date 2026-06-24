@@ -1,5 +1,7 @@
 import { LucideIcon } from 'lucide-react'
 import { ReactNode } from 'react'
+import { MetricLabel } from '@/components/MetricLabel'
+import { useLanguage } from '@/lib/language-context'
 
 interface StatCardProps {
   label:   string
@@ -7,9 +9,11 @@ interface StatCardProps {
   change?: { value: number; isPositive: boolean }
   icon:    LucideIcon
   delay?:  number
+  tooltipKey?: string
 }
 
-export function StatCard({ label, value, change, icon: Icon, delay = 0 }: StatCardProps) {
+export function StatCard({ label, value, change, icon: Icon, delay = 0, tooltipKey }: StatCardProps) {
+  const { t } = useLanguage()
   const isUp = change?.isPositive === true
 
   return (
@@ -26,7 +30,7 @@ export function StatCard({ label, value, change, icon: Icon, delay = 0 }: StatCa
       <div className="flex items-center justify-between mb-4 relative">
         <p className="text-[11px] font-bold uppercase tracking-[0.1em]"
           style={{ color: 'var(--text-muted)' }}>
-          {label}
+          <MetricLabel label={label} tooltipKey={tooltipKey} />
         </p>
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110"
@@ -69,7 +73,7 @@ export function StatCard({ label, value, change, icon: Icon, delay = 0 }: StatCa
           }}
         >
           {isUp ? '↑' : '↓'} {Math.abs(change.value).toFixed(1)}%
-          <span style={{ color: 'var(--text-subtle)', fontWeight: 400 }}>vs prev</span>
+          <span style={{ color: 'var(--text-subtle)', fontWeight: 400 }}>{t('common.vsPrev')}</span>
         </span>
       ) : (
         <span className="inline-block h-5" />

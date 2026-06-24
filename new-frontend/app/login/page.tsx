@@ -5,21 +5,23 @@ import { useRouter } from 'next/navigation'
 import { Loader2, LayoutDashboard, Eye, EyeOff, BarChart3, Globe, Mail, Search, TrendingUp } from 'lucide-react'
 import { setToken } from '@/lib/auth'
 import { ModeToggle } from '@/components/ModeToggle'
+import { useLanguage } from '@/lib/language-context'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
-const API    = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
-const COLOR  = '#6366f1'
-const COLOR2 = '#818cf8'
+const API   = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
+const COLOR = '#FF4D00'
 
-const PLATFORMS = [
-  { label: 'Google Ads',  icon: BarChart3  },
-  { label: 'Meta Ads',    icon: Globe      },
-  { label: 'Email',       icon: Mail       },
-  { label: 'Analytics',   icon: TrendingUp },
-  { label: 'Search',      icon: Search     },
-]
+const PLATFORM_KEYS = [
+  { key: 'login.platform.googleAds',  icon: BarChart3  },
+  { key: 'login.platform.metaAds',    icon: Globe      },
+  { key: 'login.platform.email',      icon: Mail       },
+  { key: 'login.platform.analytics',  icon: TrendingUp },
+  { key: 'login.platform.seo',        icon: Search     },
+] as const
 
 export default function LoginPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -36,11 +38,11 @@ export default function LoginPage() {
         body:    JSON.stringify({ email, password }),
       })
       const data = await res.json()
-      if (!res.ok || data.role === 'admin') { setError('Invalid email or password.'); setLoading(false); return }
+      if (!res.ok || data.role === 'admin') { setError(t('login.errorInvalid')); setLoading(false); return }
       setToken(data.token)
       router.push('/')
     } catch {
-      setError('Unable to sign in. Please try again.')
+      setError(t('login.errorGeneric'))
       setLoading(false)
     }
   }
@@ -51,67 +53,61 @@ export default function LoginPage() {
       {/* ─── Left branding panel (desktop only) ─────────── */}
       <div
         className="hidden lg:flex w-[46%] relative flex-col justify-between p-14 overflow-hidden select-none"
-        style={{ background: 'linear-gradient(155deg, #0b0d18 0%, #0f1120 60%, #0d0f1a 100%)' }}
+        style={{ background: 'linear-gradient(155deg, #0A0A0A 0%, #1C1C1C 60%, #0A0A0A 100%)' }}
       >
-        {/* Dot-grid overlay */}
         <div className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage: 'radial-gradient(circle, rgba(99,102,241,0.18) 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, rgba(255,77,0,0.15) 1px, transparent 1px)',
             backgroundSize: '28px 28px',
-            opacity: 0.4,
+            opacity: 0.35,
           }} />
 
-        {/* Glow orbs */}
         <div className="absolute -top-32 -left-32 w-[420px] h-[420px] rounded-full pointer-events-none"
-          style={{ background: `radial-gradient(circle, ${COLOR}22, transparent 65%)` }} />
+          style={{ background: 'radial-gradient(circle, rgba(255,77,0,0.12), transparent 65%)' }} />
         <div className="absolute bottom-0 -right-20 w-[300px] h-[300px] rounded-full pointer-events-none"
-          style={{ background: `radial-gradient(circle, ${COLOR}16, transparent 70%)` }} />
+          style={{ background: 'radial-gradient(circle, rgba(255,77,0,0.08), transparent 70%)' }} />
 
-        {/* Brand */}
         <div className="relative z-10">
           <div className="flex items-baseline gap-0.5">
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '2.75rem', letterSpacing: '-0.03em', color: '#fff', lineHeight: 1 }}>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '2.75rem', letterSpacing: '-0.03em', color: '#FAFAFA', lineHeight: 1 }}>
               WHAT THE
             </span>
             <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '3rem', color: COLOR, lineHeight: 1, margin: '0 5px' }}>
               *
             </span>
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '2.75rem', letterSpacing: '-0.03em', color: '#fff', lineHeight: 1 }}>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '2.75rem', letterSpacing: '-0.03em', color: '#FAFAFA', lineHeight: 1 }}>
               DS
             </span>
           </div>
           <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
-            style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)' }}>
-            <LayoutDashboard className="w-3.5 h-3.5" style={{ color: COLOR2 }} />
-            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: COLOR2 }}>
-              Client Portal
+            style={{ background: 'rgba(255,77,0,0.12)', border: '1px solid rgba(255,77,0,0.35)' }}>
+            <LayoutDashboard className="w-3.5 h-3.5" style={{ color: COLOR }} />
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: COLOR }}>
+              {t('login.portal')}
             </span>
           </div>
         </div>
 
-        {/* Tagline */}
         <div className="relative z-10">
-          <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '2.5rem', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#fff', marginBottom: '16px' }}>
-            YOUR MARKETING,<br />ONE DASHBOARD.
+          <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '2.5rem', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA', marginBottom: '16px' }}>
+            {t('login.tagline')}
           </p>
-          <p style={{ fontSize: '0.875rem', color: '#4a5070', lineHeight: 1.7 }}>
-            Real-time insights from every channel —<br />connected, clear, and always up to date.
+          <p style={{ fontSize: '0.875rem', color: 'rgba(250,250,250,0.45)', lineHeight: 1.7 }}>
+            {t('login.subtitle')}
           </p>
 
-          {/* Platform pills */}
           <div className="flex flex-wrap gap-2 mt-6">
-            {PLATFORMS.map(({ label, icon: Icon }) => (
-              <div key={label} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+            {PLATFORM_KEYS.map(({ key, icon: Icon }) => (
+              <div key={key} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <Icon className="w-3 h-3" style={{ color: '#4a5070' }} />
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#5a6080' }}>{label}</span>
+                <Icon className="w-3 h-3" style={{ color: 'rgba(250,250,250,0.35)' }} />
+                <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(250,250,250,0.45)' }}>{t(key)}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <p className="relative z-10 text-xs" style={{ color: '#1e2140' }}>
+        <p className="relative z-10 text-xs" style={{ color: 'rgba(250,250,250,0.2)' }}>
           © 2026 What The * DS
         </p>
       </div>
@@ -119,52 +115,50 @@ export default function LoginPage() {
       {/* ─── Right form panel ────────────────────────────── */}
       <div className="flex-1 flex flex-col" style={{ background: 'var(--bg)' }}>
 
-        {/* Top bar */}
         <div className="flex items-center justify-between px-8 py-5">
-          {/* Mobile brand */}
           <div className="flex lg:hidden items-baseline gap-0.5">
             <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.5rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>WHAT THE</span>
             <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.75rem', color: COLOR, lineHeight: 1, margin: '0 3px' }}>*</span>
             <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '1.5rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>DS</span>
           </div>
           <div className="hidden lg:block" />
-          <ModeToggle />
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <ModeToggle />
+          </div>
         </div>
 
-        {/* Centered form */}
         <div className="flex-1 flex items-center justify-center px-8 pb-16">
           <div className="w-full max-w-[380px]">
 
-            {/* Heading */}
             <div className="mb-8">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-5"
-                style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
+                style={{ background: 'rgba(255,77,0,0.1)', border: '1px solid rgba(255,77,0,0.25)' }}>
                 <LayoutDashboard className="w-3 h-3" style={{ color: COLOR }} />
                 <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: COLOR }}>
-                  Client Portal
+                  {t('login.portal')}
                 </span>
               </div>
               <h1 style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: '2.5rem', lineHeight: 1, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                WELCOME BACK
+                {t('login.welcome')}
               </h1>
               <p style={{ fontSize: '0.875rem', marginTop: '8px', color: 'var(--text-muted)' }}>
-                Sign in to your marketing dashboard
+                {t('login.signInDesc')}
               </p>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-[0.09em] mb-1.5"
                   style={{ color: 'var(--text-muted)' }}>
-                  Email Address
+                  {t('login.email')}
                 </label>
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)}
-                  required autoComplete="email" placeholder="you@company.com"
+                  required autoComplete="email" placeholder="jij@bedrijf.nl"
                   className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
                   style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', color: 'var(--text-primary)' }}
-                  onFocus={e => { e.target.style.borderColor = COLOR; e.target.style.boxShadow = `0 0 0 3px rgba(99,102,241,0.12)` }}
+                  onFocus={e => { e.target.style.borderColor = COLOR; e.target.style.boxShadow = '0 0 0 3px rgba(255,77,0,0.12)' }}
                   onBlur={e =>  { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
                 />
               </div>
@@ -172,7 +166,7 @@ export default function LoginPage() {
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-[0.09em] mb-1.5"
                   style={{ color: 'var(--text-muted)' }}>
-                  Password
+                  {t('login.password')}
                 </label>
                 <div className="relative">
                   <input
@@ -180,7 +174,7 @@ export default function LoginPage() {
                     required autoComplete="current-password" placeholder="••••••••"
                     className="w-full rounded-xl px-4 py-3 pr-12 text-sm outline-none transition-all"
                     style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', color: 'var(--text-primary)' }}
-                    onFocus={e => { e.target.style.borderColor = COLOR; e.target.style.boxShadow = `0 0 0 3px rgba(99,102,241,0.12)` }}
+                    onFocus={e => { e.target.style.borderColor = COLOR; e.target.style.boxShadow = '0 0 0 3px rgba(255,77,0,0.12)' }}
                     onBlur={e =>  { e.target.style.borderColor = 'var(--border)'; e.target.style.boxShadow = 'none' }}
                   />
                   <button type="button" onClick={() => setShowPass(s => !s)}
@@ -207,17 +201,16 @@ export default function LoginPage() {
                   color: '#fff',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   letterSpacing: '0.04em',
-                  boxShadow: loading ? 'none' : `0 4px 20px rgba(99,102,241,0.35)`,
+                  boxShadow: loading ? 'none' : '0 4px 20px rgba(255,77,0,0.35)',
                 }}>
                 {loading
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in…</>
-                  : 'Sign In'}
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('login.signingIn')}</>
+                  : t('login.signIn')}
               </button>
             </form>
 
-            {/* Footer note */}
             <p className="text-center text-xs mt-8" style={{ color: 'var(--text-subtle)' }}>
-              Secure client access · What The * DS Platform
+              {t('login.footer')}
             </p>
           </div>
         </div>

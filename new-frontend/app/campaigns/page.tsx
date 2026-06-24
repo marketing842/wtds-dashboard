@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
+import { MetricKpi } from '@/components/MetricLabel'
 import { useDateRange } from '@/lib/date-range-context'
 import { MousePointerClick, Eye, Euro, Target, Loader2, RefreshCw } from 'lucide-react'
 
@@ -35,10 +36,10 @@ function pctChg(a: number, b: number | null | undefined) {
   return ((a - b) / b) * 100
 }
 
-const MATCH_BADGE: Record<string, { label: string; color: string }> = {
-  EXACT:  { label: 'Exact',  color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30' },
-  BROAD:  { label: 'Broad',  color: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30' },
-  PHRASE: { label: 'Phrase', color: 'bg-green-500/15 text-green-700 dark:text-green-300 border-green-500/30' },
+const MATCH_BADGE: Record<string, { key: string; color: string }> = {
+  EXACT:  { key: 'campaigns.match.exact',  color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30' },
+  BROAD:  { key: 'campaigns.match.broad',  color: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30' },
+  PHRASE: { key: 'campaigns.match.phrase', color: 'bg-green-500/15 text-green-700 dark:text-green-300 border-green-500/30' },
 }
 
 export default function CampaignsPage() {
@@ -93,17 +94,17 @@ export default function CampaignsPage() {
         // Auto-retry once after 3s — backend cache may not be warm yet
         setTimeout(() => fetchKeywords(start, end, 1), 3000)
       } else {
-        setKwError('Could not load keywords')
+        setKwError(t('campaigns.kwError'))
       }
     } finally {
       setKwLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const timer = setTimeout(() => fetchKeywords(startDate, endDate), 600)
     return () => clearTimeout(timer)
-  }, [startDate, endDate, fetchKeywords])
+  }, [startDate, endDate, fetchKeywords, t])
 
   const cur = summary?.current
   const prev = summary?.prev
@@ -144,42 +145,38 @@ export default function CampaignsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                   <StatCard
                     label={t('campaigns.stat.impressions')}
+                    tooltipKey="tooltip.impressions"
                     value={cur.impressions >= 1000 ? `${fmt(cur.impressions / 1000)}K` : fmt(cur.impressions, 0)}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
                     icon={Eye}
                   />
                   <StatCard
                     label={t('campaigns.stat.clicks')}
+                    tooltipKey="tooltip.clicks"
                     value={fmt(cur.clicks, 0)}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
                     icon={MousePointerClick}
                   />
                   <StatCard
                     label={t('campaigns.stat.cost')}
+                    tooltipKey="tooltip.spend"
                     value={fmtEur(cur.cost)}
                     change={pctChg(cur.cost, prev?.cost) != null ? { value: Math.abs(pctChg(cur.cost, prev?.cost)!), isPositive: pctChg(cur.cost, prev?.cost)! <= 0 } : undefined}
                     icon={Euro}
                   />
                   <StatCard
                     label={t('campaigns.stat.conversions')}
+                    tooltipKey="tooltip.conversions"
                     value={fmt(cur.conversions, 0)}
                     change={pctChg(cur.conversions, prev?.conversions) != null ? { value: Math.abs(pctChg(cur.conversions, prev?.conversions)!), isPositive: pctChg(cur.conversions, prev?.conversions)! >= 0 } : undefined}
                     icon={Target}
                   />
                 </div>
 
-                {/* Secondary KPIs */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                  {[
-                    { label: t('campaigns.stat.ctr'), value: `${fmt(cur.ctr)}%` },
-                    { label: t('campaigns.stat.avgCpc'), value: fmtEur(cur.avg_cpc) },
-                    { label: t('campaigns.stat.cpa'), value: cur.conversions > 0 ? fmtEur(cur.cpa) : '—' },
-                  ].map(m => (
-                    <div key={m.label} className="stat-card flex items-center justify-between py-4">
-                      <p className="text-muted-foreground text-sm font-medium">{m.label}</p>
-                      <p className="text-2xl font-bold text-accent">{m.value}</p>
-                    </div>
-                  ))}
+                  <MetricKpi label={t('campaigns.stat.ctr')} value={`${fmt(cur.ctr)}%`} tooltipKey="tooltip.ctr" />
+                  <MetricKpi label={t('campaigns.stat.avgCpc')} value={fmtEur(cur.avg_cpc)} tooltipKey="tooltip.kpk" />
+                  <MetricKpi label={t('campaigns.stat.cpa')} value={cur.conversions > 0 ? fmtEur(cur.cpa) : '—'} tooltipKey="tooltip.kpa" accent />
                 </div>
 
                 {/* Top Keywords */}
@@ -227,13 +224,15 @@ export default function CampaignsPage() {
                           </thead>
                           <tbody>
                             {topKeywords.map((kw, i) => {
-                              const badge = MATCH_BADGE[kw.match_type] ?? { label: kw.match_type, color: 'bg-slate-500/20 text-muted-foreground border-slate-500/30' }
+                              const badge = MATCH_BADGE[kw.match_type]
+                              const badgeLabel = badge ? t(badge.key) : kw.match_type
+                              const badgeColor = badge?.color ?? 'bg-slate-500/20 text-muted-foreground border-slate-500/30'
                               return (
                                 <tr key={i} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--border)]/50 transition-colors">
                                   <td className="px-5 py-3 text-foreground font-medium">{kw.text}</td>
                                   <td className="px-4 py-3">
-                                    <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${badge.color}`}>
-                                      {badge.label}
+                                    <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${badgeColor}`}>
+                                      {badgeLabel}
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 text-right text-foreground">{fmt(kw.clicks, 0)}</td>
