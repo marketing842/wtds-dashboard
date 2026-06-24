@@ -93,7 +93,7 @@ export function MetricLabel({ label, tooltipKey, className = '' }: MetricLabelPr
         <button
           ref={triggerRef}
           type="button"
-          className="inline-flex items-center justify-center rounded-full p-0.5 opacity-40 hover:opacity-90 focus:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 transition-opacity cursor-help flex-shrink-0"
+          className="inline-flex items-center justify-center rounded-full p-0.5 opacity-40 hover:opacity-90 focus:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 transition-opacity cursor-pointer flex-shrink-0"
           style={{ color: 'var(--text-muted)' }}
           aria-label={tip}
           onMouseEnter={show}
