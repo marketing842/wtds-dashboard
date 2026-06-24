@@ -39,6 +39,9 @@ export function describeApiError(err, provider = 'API') {
   } else if (httpStatus === 429) {
     code = 'rate_limited';
     message = `${provider} rate limit reached — please try again in a moment`;
+  } else if (apiErr?.message?.includes('insufficient authentication scopes')) {
+    code = 'wrong_scope';
+    message = `${provider} refresh token has the wrong OAuth scope — generate a new token with the correct setup script`;
   } else if (apiErr?.message) {
     code = apiErr.code ?? apiErr.status ?? code;
     message = apiErr.message;
