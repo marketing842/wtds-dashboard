@@ -14,6 +14,7 @@ import {
 
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
+import { apiErrorKey, parseApiError } from '@/lib/api-error'
 
 function fmt(n: number, decimals = 0) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -54,11 +55,20 @@ export default function AnalyticsPage() {
   const [sources, setSources] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
+
+  function resolveErrorMessage(message: string, code?: string) {
+    const key = apiErrorKey(code, 'analytics')
+    if (key && t(key) !== key) return t(key)
+    if (message.includes('not configured')) return t('analytics.notConfigured')
+    return message
+  }
 
   useEffect(() => {
     const timer = setTimeout(async () => {
       setLoading(true)
       setError(null)
+      setErrorCode(null)
       try {
         const { ps, pe } = getPrevRange(startDate, endDate)
         const [sumRes, prevRes, pagesRes, sourcesRes] = await Promise.all([
@@ -68,8 +78,9 @@ export default function AnalyticsPage() {
           apiFetch(`/api/analytics/sources?start=${startDate}&end=${endDate}`),
         ])
         if (!sumRes.ok) {
-          const body = await sumRes.json().catch(() => ({}))
-          throw new Error(body?.error ?? `HTTP ${sumRes.status}`)
+          const { message, code } = await parseApiError(sumRes)
+          setErrorCode(code ?? null)
+          throw new Error(message)
         }
         const [s, sp, p, src] = await Promise.all([
           sumRes.json(),
@@ -110,11 +121,9 @@ export default function AnalyticsPage() {
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-700 dark:text-red-300 text-sm mb-8">
                 <p className="font-semibold mb-1">{t('analytics.error')}</p>
-                <p>{error}</p>
-                {error.includes('GOOGLE_GA4_REFRESH_TOKEN') && (
-                  <p className="mt-2 text-muted-foreground text-xs">
-                    Run in the backend folder: <code className="text-accent">node scripts/ga4-oauth.js</code>, then restart the backend.
-                  </p>
+                <p>{resolveErrorMessage(error, errorCode ?? undefined)}</p>
+                {(errorCode === 'auth_expired' || errorCode === 'unauthorized' || errorCode === 'wrong_scope') && (
+                  <p className="mt-2 text-muted-foreground text-xs">{t('analytics.reconnectHint')}</p>
                 )}
               </div>
             )}

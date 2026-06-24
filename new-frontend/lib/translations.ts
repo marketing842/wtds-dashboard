@@ -62,8 +62,16 @@ const nl: Dict = {
   'analytics.table.users': 'Gebruikers',
   'analytics.table.bounce': 'Bounce',
   'analytics.noData': 'Geen data voor deze periode.',
+  'analytics.notConfigured': 'Google Analytics is nog niet gekoppeld voor dit account.',
+  'analytics.reconnectHint': 'De Google Analytics-koppeling moet opnieuw worden geautoriseerd via het adminpanel.',
 
-  // Campaigns (Google Ads)
+  // API errors (client-facing)
+  'apiError.analytics.wrongScope': 'De refresh token is voor een andere Google-dienst (bijv. Search Console). Gebruik node scripts/ga4-oauth.js en plak de token bij Google Analytics 4 in het adminpanel — niet bij Search Console.',
+  'apiError.analytics.authExpired': 'De Google Analytics-koppeling is verlopen of ingetrokken. Autoriseer opnieuw via het adminpanel.',
+  'apiError.analytics.forbidden': 'Geen toegang tot dit Google Analytics-account. Controleer of het gekoppelde Google-account nog rechten heeft.',
+  'apiError.rateLimited': 'Te veel verzoeken — probeer het over een moment opnieuw.',
+  'apiError.timeout': 'Verzoek time-out — probeer het opnieuw.',
+  'apiError.upstream': 'De dienst is tijdelijk niet beschikbaar. Probeer het later opnieuw.',
   'campaigns.title': 'Google Ads',
   'campaigns.desc': 'Echte campagnedata voor de geselecteerde periode',
   'campaigns.loading': 'Google Ads laden…',
@@ -298,6 +306,25 @@ const nl: Dict = {
   'login.platform.analytics': 'Analytics',
   'login.platform.seo': 'SEO',
 
+  // Admin login
+  'adminLogin.portal': 'Adminpanel',
+  'adminLogin.tagline': 'AGENCY CONTROL.\nCOMPLETE VISIBILITY.',
+  'adminLogin.subtitle': 'Beheer elk klantaccount, credential en integratie vanuit één panel.',
+  'adminLogin.feature.clients': 'Beheer alle klantaccounts',
+  'adminLogin.feature.credentials': 'Beheer API-credentials',
+  'adminLogin.feature.dashboards': 'Bekijk alle klantdashboards',
+  'adminLogin.feature.secure': 'Veilige toegang alleen voor agency',
+  'adminLogin.welcome': 'ADMIN INLOGGEN',
+  'adminLogin.signInDesc': 'Alleen toegang voor agency-medewerkers',
+  'adminLogin.email': 'Admin e-mailadres',
+  'adminLogin.password': 'Wachtwoord',
+  'adminLogin.signIn': 'Inloggen als admin',
+  'adminLogin.signingIn': 'Bezig met inloggen…',
+  'adminLogin.errorInvalid': 'Ongeldig e-mailadres of wachtwoord.',
+  'adminLogin.errorGeneric': 'Kan niet inloggen. Probeer het opnieuw.',
+  'adminLogin.footer': 'Beperkte toegang · Alleen agency-medewerkers',
+  'adminLogin.footerBrand': '© 2026 What The * DS · Alleen agency',
+
   // Metric tooltips
   'tooltip.cpl': 'Kosten per lead — totale advertentie-uitgave gedeeld door het aantal leads.',
   'tooltip.kpl': 'Kosten per lead — totale advertentie-uitgave gedeeld door het aantal leads.',
@@ -394,6 +421,16 @@ const en: Dict = {
   'analytics.table.users': 'Users',
   'analytics.table.bounce': 'Bounce',
   'analytics.noData': 'No data for this period.',
+  'analytics.notConfigured': 'Google Analytics is not connected for this account.',
+  'analytics.reconnectHint': 'The Google Analytics connection must be re-authorized via the admin panel.',
+
+  // API errors (client-facing)
+  'apiError.analytics.wrongScope': 'This refresh token is for a different Google service (e.g. Search Console). Run node scripts/ga4-oauth.js and paste the token under Google Analytics 4 in the admin panel — not Search Console.',
+  'apiError.analytics.authExpired': 'The Google Analytics connection has expired or was revoked. Re-authorize via the admin panel.',
+  'apiError.analytics.forbidden': 'No access to this Google Analytics account. Check that the linked Google account still has permission.',
+  'apiError.rateLimited': 'Too many requests — please try again in a moment.',
+  'apiError.timeout': 'Request timed out — please try again.',
+  'apiError.upstream': 'The service is temporarily unavailable. Please try again later.',
 
   // Campaigns (Google Ads)
   'campaigns.title': 'Google Ads',
@@ -629,6 +666,25 @@ const en: Dict = {
   'login.platform.email': 'Email',
   'login.platform.analytics': 'Analytics',
   'login.platform.seo': 'SEO',
+
+  // Admin login
+  'adminLogin.portal': 'Admin Panel',
+  'adminLogin.tagline': 'AGENCY CONTROL.\nCOMPLETE VISIBILITY.',
+  'adminLogin.subtitle': 'Manage every client account, credential, and integration from a single panel.',
+  'adminLogin.feature.clients': 'Manage all client accounts',
+  'adminLogin.feature.credentials': 'Control API credentials',
+  'adminLogin.feature.dashboards': 'View all client dashboards',
+  'adminLogin.feature.secure': 'Secure agency-only access',
+  'adminLogin.welcome': 'ADMIN SIGN IN',
+  'adminLogin.signInDesc': 'Agency staff access only',
+  'adminLogin.email': 'Admin Email',
+  'adminLogin.password': 'Password',
+  'adminLogin.signIn': 'Sign In to Admin',
+  'adminLogin.signingIn': 'Signing in…',
+  'adminLogin.errorInvalid': 'Invalid email or password.',
+  'adminLogin.errorGeneric': 'Unable to sign in. Please try again.',
+  'adminLogin.footer': 'Restricted access · Agency staff only',
+  'adminLogin.footerBrand': '© 2026 What The * DS · Agency Only',
 
   // Metric tooltips
   'tooltip.cpl': 'Cost per lead — total ad spend divided by number of leads.',

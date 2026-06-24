@@ -123,7 +123,7 @@ export default function LoginPage() {
           </div>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-2">
-            <LanguageToggle />
+            <LanguageToggle variant="inline" />
             <ModeToggle />
           </div>
         </div>
