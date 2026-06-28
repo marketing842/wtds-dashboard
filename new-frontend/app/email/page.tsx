@@ -5,7 +5,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
 import { useDateRange } from '@/lib/date-range-context'
-import { Mail, MousePointerClick, CheckCircle, TrendingUp, Loader2 } from 'lucide-react'
+import { Mail, MousePointerClick, CheckCircle, TrendingUp, Loader2, Euro } from 'lucide-react'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
 import {
@@ -127,9 +127,29 @@ export default function EmailPage() {
   const cur = summary?.current
   const prev = summary?.prev
 
-  const bestFlow = flows.length > 0
-    ? flows.reduce((best, f) => (f.open_rate > best.open_rate ? f : best), flows[0])
+  const revenueChart = [...flows]
+    .filter(f => (f.revenue ?? 0) > 0)
+    .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))
+    .slice(0, 8)
+    .map(f => ({ name: truncateLabel(f.name), revenue: Math.round(f.revenue ?? 0) }))
+
+  const ratesChart = [...flows, ...campaigns]
+    .filter(x => x.delivered > 0)
+    .sort((a, b) => b.delivered - a.delivered)
+    .slice(0, 8)
+    .map(x => ({
+      name: truncateLabel(x.name),
+      open_rate: Math.round(x.open_rate * 10) / 10,
+      ctor: Math.round(x.ctor * 10) / 10,
+    }))
+
+  const activeFlows = flows.filter(f => !f.no_activity && f.delivered > 0)
+
+  const bestFlow = activeFlows.length > 0
+    ? activeFlows.reduce((best, f) => (f.open_rate > best.open_rate ? f : best), activeFlows[0])
     : null
+
+  const hasRevenueData = revenueChart.length > 0 || (cur?.revenue ?? 0) > 0
 
   const stats = cur ? [
     {
@@ -161,22 +181,6 @@ export default function EmailPage() {
       icon: TrendingUp,
     },
   ] : []
-
-  const revenueChart = [...flows]
-    .filter(f => (f.revenue ?? 0) > 0)
-    .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))
-    .slice(0, 8)
-    .map(f => ({ name: truncateLabel(f.name), revenue: Math.round(f.revenue ?? 0) }))
-
-  const ratesChart = [...flows, ...campaigns]
-    .filter(x => x.delivered > 0)
-    .sort((a, b) => b.delivered - a.delivered)
-    .slice(0, 8)
-    .map(x => ({
-      name: truncateLabel(x.name),
-      open_rate: Math.round(x.open_rate * 10) / 10,
-      ctor: Math.round(x.ctor * 10) / 10,
-    }))
 
   const tooltipStyle = {
     contentStyle: { background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' },
@@ -231,41 +235,31 @@ export default function EmailPage() {
                   ))}
                 </div>
 
-                {/* Charts */}
-                {(revenueChart.length > 0 || ratesChart.length > 0) && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    {revenueChart.length > 0 && (
-                      <div className="stat-card">
-                        <p className="text-foreground font-bold text-lg mb-1">{t('email.chart.revenue')}</p>
-                        <p className="text-muted-foreground text-sm mb-4"><DateRangeLabel start={startDate} end={endDate} /></p>
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={revenueChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                            <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
-                            <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${v.toLocaleString('nl-NL')}`} />
-                            <Tooltip {...tooltipStyle} formatter={(v: number) => [`€${v.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}`, t('email.chart.revenueLabel')]} cursor={{ fill: chart.cursorFill }} />
-                            <Bar dataKey="revenue" fill="#FF4D00" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
+                {/* Best Flow highlight — mock order: KPIs → best flow → iOS note → charts */}
+                {bestFlow && (
+                  <div className="stat-card border-l-4 border-l-accent mb-6">
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div>
+                        <p className="text-foreground font-bold text-lg">{bestFlow.name}</p>
+                        <p className="text-muted-foreground text-sm mt-0.5">{t('email.bestFlowSub')}</p>
                       </div>
-                    )}
-                    {ratesChart.length > 0 && (
-                      <div className="stat-card">
-                        <p className="text-foreground font-bold text-lg mb-1">{t('email.chart.openVsCtor')}</p>
-                        <p className="text-muted-foreground text-sm mb-4">{t('email.chart.openVsCtorDesc')}</p>
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={ratesChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                            <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
-                            <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
-                            <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [`${fmt(v)}%`, name === 'open_rate' ? t('email.stat.openRate') : t('email.stat.ctor')]} cursor={{ fill: chart.cursorFill }} />
-                            <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
-                            <Bar dataKey="open_rate" name={t('email.stat.openRate')} fill="#4F7EFF" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="ctor" name={t('email.stat.ctor')} fill="#FBBF24" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
+                      <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full border bg-accent/15 text-accent border-accent/30 flex-shrink-0">
+                        {t('email.badge.topFlow')}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: t('email.stat.openRate'), value: `${fmt(bestFlow.open_rate)}%`, accent: true },
+                        { label: t('email.stat.ctor'), value: `${fmt(bestFlow.ctor)}%`, accent: false },
+                        { label: t('email.stat.delivered'), value: bestFlow.delivered.toLocaleString('nl-NL'), accent: false },
+                        { label: t('email.stat.unsubRate'), value: `${fmt(bestFlow.unsub_rate)}%`, accent: false },
+                      ].map(item => (
+                        <div key={item.label} className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                          <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                          <p className={`font-bold text-xl ${item.accent ? 'text-accent' : 'text-foreground'}`}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -280,27 +274,52 @@ export default function EmailPage() {
                   </div>
                 </div>
 
-                {/* Best Flow highlight */}
-                {bestFlow && (
-                  <div className="stat-card border-l-4 border-l-accent mb-6">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2">{t('email.bestFlow')}</p>
-                    <p className="text-foreground font-bold text-lg">{bestFlow.name}</p>
-                    <div className="flex gap-6 mt-3">
-                      <div>
-                        <p className="text-xs text-muted-foreground">{t('email.stat.openRate')}</p>
-                        <p className="text-accent font-bold text-xl">{fmt(bestFlow.open_rate)}%</p>
+                {/* Charts — always two columns like mock */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  <div className="stat-card">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('email.chart.openVsCtor')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('email.chart.openVsCtorDesc')}</p>
+                    {ratesChart.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={ratesChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                          <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
+                          <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                          <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [`${fmt(v)}%`, name === 'open_rate' ? t('email.stat.openRate') : t('email.stat.ctor')]} cursor={{ fill: chart.cursorFill }} />
+                          <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
+                          <Bar dataKey="open_rate" name={t('email.stat.openRate')} fill="#4F7EFF" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="ctor" name={t('email.stat.ctor')} fill="#FBBF24" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-[220px] text-muted-foreground text-sm">
+                        {t('email.noFlows')}
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">{t('email.stat.ctor')}</p>
-                        <p className="text-foreground font-bold text-xl">{fmt(bestFlow.ctor)}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">{t('email.stat.delivered')}</p>
-                        <p className="text-foreground font-bold text-xl">{bestFlow.delivered.toLocaleString()}</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                )}
+
+                  <div className="stat-card">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('email.chart.revenue')}</p>
+                    <p className="text-muted-foreground text-sm mb-4"><DateRangeLabel start={startDate} end={endDate} /></p>
+                    {hasRevenueData ? (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={revenueChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                          <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
+                          <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${v.toLocaleString('nl-NL')}`} />
+                          <Tooltip {...tooltipStyle} formatter={(v: number) => [`€${v.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}`, t('email.chart.revenueLabel')]} cursor={{ fill: chart.cursorFill }} />
+                          <Bar dataKey="revenue" fill="#FF4D00" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-[220px] rounded-lg border border-dashed border-[var(--border)] px-6 text-center">
+                        <Euro className="w-8 h-8 text-muted-foreground/40 mb-3" />
+                        <p className="text-muted-foreground text-sm font-medium">{t('email.chart.revenueEmpty')}</p>
+                        <p className="text-muted-foreground/70 text-xs mt-2 max-w-xs leading-relaxed">{t('email.chart.revenueEmptyHint')}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Flows list */}
                 <div>
