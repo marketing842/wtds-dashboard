@@ -316,17 +316,26 @@ export default function EmailPage() {
                   ) : (
                     <div className="space-y-4">
                       {flows.map((flow) => (
-                        <div key={flow.id} className="stat-card">
+                        <div key={flow.id} className={`stat-card ${flow.no_activity ? 'opacity-75' : ''}`}>
                           <div className="flex items-start justify-between">
                             <div>
                               <h3 className="text-foreground font-semibold">{flow.name}</h3>
-                              <p className="text-muted-foreground text-sm mt-1">{flow.delivered} {t('email.delivered')} · {flow.recipients} {t('email.recipients')}</p>
+                              <p className="text-muted-foreground text-sm mt-1">
+                                {flow.no_activity
+                                  ? t('email.noActivityInPeriod')
+                                  : `${flow.delivered} ${t('email.delivered')} · ${flow.recipients} ${t('email.recipients')}`}
+                              </p>
                             </div>
-                            <span className="inline-block text-xs font-medium px-3 py-1 rounded-full border bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-                              {t('email.badge.live')}
+                            <span className={`inline-block text-xs font-medium px-3 py-1 rounded-full border ${
+                              flow.no_activity
+                                ? 'bg-slate-500/20 text-muted-foreground border-slate-500/30'
+                                : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                            }`}>
+                              {flow.no_activity ? t('email.badge.noActivity') : t('email.badge.live')}
                             </span>
                           </div>
 
+                          {!flow.no_activity && (
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
                             <div>
                               <p className="text-muted-foreground text-xs font-medium">{t('email.table.opens')}</p>
@@ -348,6 +357,7 @@ export default function EmailPage() {
                               <p className="text-muted-foreground text-xs mt-1">{fmt(flow.unsub_rate)}%</p>
                             </div>
                           </div>
+                          )}
                         </div>
                       ))}
                     </div>

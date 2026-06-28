@@ -164,14 +164,15 @@ app.get('/api/klaviyo/summary', async (req, res) => {
     if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
     const { creds } = req.client;
     if (!creds.klaviyo) return res.status(422).json({ error: 'Klaviyo credentials not configured for this client' });
-    const key = `ks_${req.client.id}_${start}_${end}_${compare_start}_${compare_end}`;
+    const key = `ks2_${req.client.id}_${start}_${end}_${compare_start}_${compare_end}`;
     const data = await cached(key, () => getKlaviyoSummary(start, end, compare_start, compare_end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
     const status = err.response?.status;
     if (status === 400) {
-      console.warn('[klaviyo/summary] date range rejected by Klaviyo, returning empty');
-      return res.json({ current: null, previous: null });
+      const detail = err.response?.data?.errors?.[0]?.detail ?? 'Klaviyo rejected the date range or metric configuration';
+      console.warn('[klaviyo/summary]', detail);
+      return res.status(400).json({ error: detail, code: 'klaviyo_bad_request' });
     }
     const out = describeApiError(err, 'Klaviyo');
     console.error('[klaviyo/summary]', out.detail);
@@ -185,12 +186,13 @@ app.get('/api/klaviyo/flows', async (req, res) => {
     if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
     const { creds } = req.client;
     if (!creds.klaviyo) return res.status(422).json({ error: 'Klaviyo credentials not configured for this client' });
-    const data = await cached(`kf_${req.client.id}_${start}_${end}`, () => getKlaviyoFlows(start, end, creds.klaviyo), 30 * 60 * 1000);
+    const data = await cached(`kf2_${req.client.id}_${start}_${end}`, () => getKlaviyoFlows(start, end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
     if (err.response?.status === 400) {
-      console.warn('[klaviyo/flows] date range rejected, returning empty');
-      return res.json([]);
+      const detail = err.response?.data?.errors?.[0]?.detail ?? 'Klaviyo rejected the request';
+      console.warn('[klaviyo/flows]', detail);
+      return res.status(400).json({ error: detail, code: 'klaviyo_bad_request' });
     }
     const out = describeApiError(err, 'Klaviyo');
     console.error('[klaviyo/flows]', out.detail);
@@ -204,12 +206,13 @@ app.get('/api/klaviyo/campaigns', async (req, res) => {
     if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
     const { creds } = req.client;
     if (!creds.klaviyo) return res.status(422).json({ error: 'Klaviyo credentials not configured for this client' });
-    const data = await cached(`kc_${req.client.id}_${start}_${end}`, () => getKlaviyoCampaigns(start, end, creds.klaviyo), 30 * 60 * 1000);
+    const data = await cached(`kc2_${req.client.id}_${start}_${end}`, () => getKlaviyoCampaigns(start, end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
     if (err.response?.status === 400) {
-      console.warn('[klaviyo/campaigns] date range rejected, returning empty');
-      return res.json([]);
+      const detail = err.response?.data?.errors?.[0]?.detail ?? 'Klaviyo rejected the request';
+      console.warn('[klaviyo/campaigns]', detail);
+      return res.status(400).json({ error: detail, code: 'klaviyo_bad_request' });
     }
     const out = describeApiError(err, 'Klaviyo');
     console.error('[klaviyo/campaigns]', out.detail);

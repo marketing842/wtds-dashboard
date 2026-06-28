@@ -55,6 +55,7 @@ const PROVIDERS = [
     color: '#10B981',
     fields: [
       { key: 'api_key', label: 'API Key (pk_...)', unique: true, secret: true },
+      { key: 'conversion_metric_id', label: 'Conversion metric ID (optional — auto-detects Placed Order)', unique: true, secret: false },
     ],
   },
 ]
