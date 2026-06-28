@@ -174,6 +174,9 @@ const nl: Dict = {
   'email.chart.revenueEmpty': 'Geen omzetdata voor deze periode',
   'email.chart.revenueEmptyHint': 'Omzet vereist een Placed Order metric in Klaviyo. Lead-gen accounts tonen alleen engagement metrics.',
   'email.flowArchived': 'Gearchiveerde flow',
+  'email.legacyFlows': 'Legacy / gearchiveerd',
+  'email.badge.archived': 'Gearchiveerd',
+  'email.chart.noSendsInPeriod': 'Geen verzendingen in deze periode — live flows staan hieronder.',
   'email.badge.live': 'Live',
   'email.loadError': 'Kon data niet laden',
 
@@ -569,6 +572,9 @@ const en: Dict = {
   'email.chart.revenueEmpty': 'No revenue data for this period',
   'email.chart.revenueEmptyHint': 'Revenue requires a Placed Order metric in Klaviyo. Lead-gen accounts show engagement metrics only.',
   'email.flowArchived': 'Archived flow',
+  'email.legacyFlows': 'Legacy / archived',
+  'email.badge.archived': 'Archived',
+  'email.chart.noSendsInPeriod': 'No sends in this period — your live flows are listed below.',
   'email.badge.live': 'Live',
   'email.loadError': 'Failed to load data',
 

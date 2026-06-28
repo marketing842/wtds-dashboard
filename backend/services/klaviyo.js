@@ -323,6 +323,11 @@ export async function getKlaviyoFlows(start, end, creds) {
   const withStats = aggregateResults(results, getFlowId, nameMap);
   await enrichFlowNames(withStats, creds, nameMap);
 
+  for (const item of withStats) {
+    const inCatalog = Object.prototype.hasOwnProperty.call(statusMap, item.id);
+    item.is_archived = !inCatalog || !item.name || item.name === item.id;
+  }
+
   // Include live/draft flows even when the report period has zero sends
   if (flowList.length === 0) return withStats;
 
@@ -346,10 +351,16 @@ export async function getKlaviyoFlows(start, end, creds) {
       ctor: 0,
       unsub_rate: 0,
       no_activity: true,
+      is_archived: false,
     });
   }
 
-  return withStats.sort((a, b) => b.delivered - a.delivered || a.name.localeCompare(b.name));
+  return withStats.sort((a, b) => {
+    if (Boolean(a.is_archived) !== Boolean(b.is_archived)) {
+      return a.is_archived ? 1 : -1;
+    }
+    return b.delivered - a.delivered || a.name.localeCompare(b.name);
+  });
 }
 
 // Per-client lists cache

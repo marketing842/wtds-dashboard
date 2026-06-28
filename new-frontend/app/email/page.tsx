@@ -54,7 +54,7 @@ function withMinVolume<T extends { delivered?: number }>(items: T[], floor = MIN
 }
 
 function pickBestFlow(flows: any[]) {
-  const active = flows.filter(f => !f.no_activity && (f.delivered ?? 0) > 0)
+  const active = flows.filter(f => !f.no_activity && !f.is_archived && (f.delivered ?? 0) > 0)
   const pool = withMinVolume(active)
   if (!pool.length) return null
   return pool.reduce((best, f) => {
@@ -64,8 +64,19 @@ function pickBestFlow(flows: any[]) {
   }, pool[0])
 }
 
-function flowLabel(f: { id: string; name: string }, t: (k: string) => string) {
-  return f.name && f.name !== f.id ? f.name : t('email.flowArchived')
+function flowLabel(f: { id: string; name: string; is_archived?: boolean }, t: (k: string) => string) {
+  if (f.is_archived || !f.name || f.name === f.id) return t('email.flowArchived')
+  return f.name
+}
+
+function flowBadge(flow: any, t: (k: string) => string) {
+  if (flow.is_archived) {
+    return { label: t('email.badge.archived'), className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' }
+  }
+  if (flow.no_activity) {
+    return { label: t('email.badge.noActivity'), className: 'bg-slate-500/20 text-muted-foreground border-slate-500/30' }
+  }
+  return { label: t('email.badge.live'), className: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' }
 }
 
 export default function EmailPage() {
@@ -158,7 +169,9 @@ export default function EmailPage() {
     .slice(0, 8)
     .map(f => ({ name: truncateLabel(flowLabel(f, t)), revenue: Math.round(f.revenue ?? 0) }))
 
-  const ratesChart = withMinVolume([...flows, ...campaigns].filter(x => x.delivered > 0))
+  const ratesChart = withMinVolume(
+    [...flows.filter(f => !f.is_archived), ...campaigns].filter(x => x.delivered > 0),
+  )
     .sort((a, b) => b.delivered - a.delivered)
     .slice(0, 8)
     .map(x => ({
@@ -166,6 +179,9 @@ export default function EmailPage() {
       open_rate: Math.round(x.open_rate * 10) / 10,
       ctor: Math.round(x.ctor * 10) / 10,
     }))
+
+  const primaryFlows = flows.filter(f => !f.is_archived)
+  const legacyFlows = flows.filter(f => f.is_archived && (f.delivered ?? 0) > 0)
 
   const bestFlow = pickBestFlow(flows)
 
@@ -312,8 +328,8 @@ export default function EmailPage() {
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
-                      <div className="flex items-center justify-center h-[220px] text-muted-foreground text-sm">
-                        {t('email.noFlows')}
+                      <div className="flex flex-col items-center justify-center h-[220px] text-muted-foreground text-sm text-center px-4">
+                        <p>{primaryFlows.some(f => f.no_activity) ? t('email.chart.noSendsInPeriod') : t('email.noFlows')}</p>
                       </div>
                     )}
                   </div>
@@ -350,11 +366,13 @@ export default function EmailPage() {
                     </p>
                   </div>
 
-                  {flows.length === 0 ? (
+                  {primaryFlows.length === 0 && legacyFlows.length === 0 ? (
                     <p className="text-muted-foreground text-sm">{t('email.noFlows')}</p>
                   ) : (
                     <div className="space-y-4">
-                      {flows.map((flow) => (
+                      {primaryFlows.map((flow) => {
+                        const badge = flowBadge(flow, t)
+                        return (
                         <div key={flow.id} className={`stat-card ${flow.no_activity ? 'opacity-75' : ''}`}>
                           <div className="flex items-start justify-between">
                             <div>
@@ -365,12 +383,8 @@ export default function EmailPage() {
                                   : `${flow.delivered} ${t('email.delivered')} · ${flow.recipients} ${t('email.recipients')}`}
                               </p>
                             </div>
-                            <span className={`inline-block text-xs font-medium px-3 py-1 rounded-full border ${
-                              flow.no_activity
-                                ? 'bg-slate-500/20 text-muted-foreground border-slate-500/30'
-                                : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                            }`}>
-                              {flow.no_activity ? t('email.badge.noActivity') : t('email.badge.live')}
+                            <span className={`inline-block text-xs font-medium px-3 py-1 rounded-full border ${badge.className}`}>
+                              {badge.label}
                             </span>
                           </div>
 
@@ -398,7 +412,51 @@ export default function EmailPage() {
                           </div>
                           )}
                         </div>
-                      ))}
+                      )})}
+
+                      {legacyFlows.length > 0 && (
+                        <div className="pt-4">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">{t('email.legacyFlows')}</p>
+                          {legacyFlows.map((flow) => {
+                            const badge = flowBadge(flow, t)
+                            return (
+                            <div key={flow.id} className="stat-card opacity-60 mb-4">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <h3 className="text-foreground font-semibold">{flowLabel(flow, t)}</h3>
+                                  <p className="text-muted-foreground text-sm mt-1">
+                                    {flow.delivered} {t('email.delivered')} · {flow.recipients} {t('email.recipients')}
+                                  </p>
+                                </div>
+                                <span className={`inline-block text-xs font-medium px-3 py-1 rounded-full border ${badge.className}`}>
+                                  {badge.label}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                                <div>
+                                  <p className="text-muted-foreground text-xs font-medium">{t('email.table.opens')}</p>
+                                  <p className="text-lg font-bold text-foreground mt-1">{flow.opens}</p>
+                                  <p className="text-muted-foreground text-xs mt-1">{fmt(flow.open_rate)}%</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground text-xs font-medium">{t('email.table.clicks')}</p>
+                                  <p className="text-lg font-bold text-foreground mt-1">{flow.clicks}</p>
+                                  <p className="text-muted-foreground text-xs mt-1">{fmt(flow.click_rate)}%</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground text-xs font-medium">{t('email.stat.ctor')}</p>
+                                  <p className="text-lg font-bold text-foreground mt-1">{fmt(flow.ctor)}%</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground text-xs font-medium">{t('email.table.unsubs')}</p>
+                                  <p className="text-lg font-bold text-foreground mt-1">{flow.unsubscribes}</p>
+                                  <p className="text-muted-foreground text-xs mt-1">{fmt(flow.unsub_rate)}%</p>
+                                </div>
+                              </div>
+                            </div>
+                          )})}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

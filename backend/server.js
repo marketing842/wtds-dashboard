@@ -186,7 +186,7 @@ app.get('/api/klaviyo/flows', async (req, res) => {
     if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
     const { creds } = req.client;
     if (!creds.klaviyo) return res.status(422).json({ error: 'Klaviyo credentials not configured for this client' });
-    const data = await cached(`kf2_${req.client.id}_${start}_${end}`, () => getKlaviyoFlows(start, end, creds.klaviyo), 30 * 60 * 1000);
+    const data = await cached(`kf3_${req.client.id}_${start}_${end}`, () => getKlaviyoFlows(start, end, creds.klaviyo), 30 * 60 * 1000);
     res.json(data);
   } catch (err) {
     if (err.response?.status === 400) {
