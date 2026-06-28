@@ -42,6 +42,31 @@ function getPrevRange(start: string, end: string) {
 
 const MAX_ATTEMPTS = 4
 const RETRY_DELAY_MS = 6000
+const MIN_FLOW_VOLUME = 5
+
+/** Ignore micro-sends when picking highlights / charts (avoids 100% open on n=1). */
+function withMinVolume<T extends { delivered?: number }>(items: T[], floor = MIN_FLOW_VOLUME): T[] {
+  if (!items.length) return []
+  const maxDel = Math.max(...items.map(x => x.delivered ?? 0))
+  const threshold = Math.max(floor, Math.floor(maxDel * 0.05))
+  const qualified = items.filter(x => (x.delivered ?? 0) >= threshold)
+  return qualified.length > 0 ? qualified : items
+}
+
+function pickBestFlow(flows: any[]) {
+  const active = flows.filter(f => !f.no_activity && (f.delivered ?? 0) > 0)
+  const pool = withMinVolume(active)
+  if (!pool.length) return null
+  return pool.reduce((best, f) => {
+    if (f.open_rate > best.open_rate) return f
+    if (f.open_rate === best.open_rate && f.delivered > best.delivered) return f
+    return best
+  }, pool[0])
+}
+
+function flowLabel(f: { id: string; name: string }, t: (k: string) => string) {
+  return f.name && f.name !== f.id ? f.name : t('email.flowArchived')
+}
 
 export default function EmailPage() {
   const { startDate, endDate } = useDateRange()
@@ -131,23 +156,18 @@ export default function EmailPage() {
     .filter(f => (f.revenue ?? 0) > 0)
     .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))
     .slice(0, 8)
-    .map(f => ({ name: truncateLabel(f.name), revenue: Math.round(f.revenue ?? 0) }))
+    .map(f => ({ name: truncateLabel(flowLabel(f, t)), revenue: Math.round(f.revenue ?? 0) }))
 
-  const ratesChart = [...flows, ...campaigns]
-    .filter(x => x.delivered > 0)
+  const ratesChart = withMinVolume([...flows, ...campaigns].filter(x => x.delivered > 0))
     .sort((a, b) => b.delivered - a.delivered)
     .slice(0, 8)
     .map(x => ({
-      name: truncateLabel(x.name),
+      name: truncateLabel(flowLabel(x, t)),
       open_rate: Math.round(x.open_rate * 10) / 10,
       ctor: Math.round(x.ctor * 10) / 10,
     }))
 
-  const activeFlows = flows.filter(f => !f.no_activity && f.delivered > 0)
-
-  const bestFlow = activeFlows.length > 0
-    ? activeFlows.reduce((best, f) => (f.open_rate > best.open_rate ? f : best), activeFlows[0])
-    : null
+  const bestFlow = pickBestFlow(flows)
 
   const hasRevenueData = revenueChart.length > 0 || (cur?.revenue ?? 0) > 0
 
@@ -240,7 +260,7 @@ export default function EmailPage() {
                   <div className="stat-card border-l-4 border-l-accent mb-6">
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div>
-                        <p className="text-foreground font-bold text-lg">{bestFlow.name}</p>
+                        <p className="text-foreground font-bold text-lg">{flowLabel(bestFlow, t)}</p>
                         <p className="text-muted-foreground text-sm mt-0.5">{t('email.bestFlowSub')}</p>
                       </div>
                       <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full border bg-accent/15 text-accent border-accent/30 flex-shrink-0">
@@ -338,7 +358,7 @@ export default function EmailPage() {
                         <div key={flow.id} className={`stat-card ${flow.no_activity ? 'opacity-75' : ''}`}>
                           <div className="flex items-start justify-between">
                             <div>
-                              <h3 className="text-foreground font-semibold">{flow.name}</h3>
+                              <h3 className="text-foreground font-semibold">{flowLabel(flow, t)}</h3>
                               <p className="text-muted-foreground text-sm mt-1">
                                 {flow.no_activity
                                   ? t('email.noActivityInPeriod')

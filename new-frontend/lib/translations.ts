@@ -173,6 +173,7 @@ const nl: Dict = {
   'email.chart.openVsCtorDesc': 'Per flow / campagne (top 8 op volume)',
   'email.chart.revenueEmpty': 'Geen omzetdata voor deze periode',
   'email.chart.revenueEmptyHint': 'Omzet vereist een Placed Order metric in Klaviyo. Lead-gen accounts tonen alleen engagement metrics.',
+  'email.flowArchived': 'Gearchiveerde flow',
   'email.badge.live': 'Live',
   'email.loadError': 'Kon data niet laden',
 
@@ -567,6 +568,7 @@ const en: Dict = {
   'email.chart.openVsCtorDesc': 'Per flow / campaign (top 8 by volume)',
   'email.chart.revenueEmpty': 'No revenue data for this period',
   'email.chart.revenueEmptyHint': 'Revenue requires a Placed Order metric in Klaviyo. Lead-gen accounts show engagement metrics only.',
+  'email.flowArchived': 'Archived flow',
   'email.badge.live': 'Live',
   'email.loadError': 'Failed to load data',
 

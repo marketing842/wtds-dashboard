@@ -186,6 +186,35 @@ async function fetchFlowList(creds) {
   return all;
 }
 
+async function fetchFlowName(id, creds) {
+  try {
+    const res = await withRetry(() => axios.get(`${BASE}/flows/${id}/`, {
+      headers: headers(creds),
+      params: { 'fields[flow]': 'name' },
+    }));
+    return res.data?.data?.attributes?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function enrichFlowNames(items, creds, nameMap) {
+  for (const item of items) {
+    if (item.name && item.name !== item.id) continue;
+    const cached = nameMap[item.id];
+    if (cached && cached !== item.id) {
+      item.name = cached;
+      continue;
+    }
+    const fetched = await fetchFlowName(item.id, creds);
+    if (fetched) {
+      item.name = fetched;
+      nameMap[item.id] = fetched;
+    }
+  }
+  return items;
+}
+
 async function fetchCampaignList(creds) {
   const url = `${BASE}/campaigns/?filter=equals(messages.channel,'email')&fields[campaign]=name,status,send_time`;
   const res = await withRetry(() => axios.get(url, { headers: headers(creds) }));
@@ -292,6 +321,7 @@ export async function getKlaviyoFlows(start, end, creds) {
   }
 
   const withStats = aggregateResults(results, getFlowId, nameMap);
+  await enrichFlowNames(withStats, creds, nameMap);
 
   // Include live/draft flows even when the report period has zero sends
   if (flowList.length === 0) return withStats;
