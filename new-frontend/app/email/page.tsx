@@ -8,10 +8,14 @@ import { useDateRange } from '@/lib/date-range-context'
 import { Mail, MousePointerClick, CheckCircle, TrendingUp, Loader2 } from 'lucide-react'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts'
 
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
 import { AudiencesSection } from '@/components/AudiencesSection'
+import { useChartColors, truncateLabel } from '@/lib/chart-theme'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -42,8 +46,10 @@ const RETRY_DELAY_MS = 6000
 export default function EmailPage() {
   const { startDate, endDate } = useDateRange()
   const { t } = useLanguage()
+  const chart = useChartColors()
   const [summary, setSummary] = useState<any>(null)
   const [flows, setFlows] = useState<any[]>([])
+  const [campaigns, setCampaigns] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [slowLoad, setSlowLoad] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -72,16 +78,18 @@ export default function EmailPage() {
         }
         try {
           const { compare_start, compare_end } = getPrevRange(startDate, endDate)
-          const [sRes, fRes] = await Promise.all([
+          const [sRes, fRes, cRes] = await Promise.all([
             apiFetch(`/api/klaviyo/summary?start=${startDate}&end=${endDate}&compare_start=${compare_start}&compare_end=${compare_end}`),
             apiFetch(`/api/klaviyo/flows?start=${startDate}&end=${endDate}`),
+            apiFetch(`/api/klaviyo/campaigns?start=${startDate}&end=${endDate}`),
           ])
           if (!active) return
 
           // Retry transparently on rate-limit or server error
           const retryable =
             (!sRes.ok && (sRes.status === 429 || sRes.status >= 500)) ||
-            (!fRes.ok && (fRes.status === 429 || fRes.status >= 500))
+            (!fRes.ok && (fRes.status === 429 || fRes.status >= 500)) ||
+            (!cRes.ok && (cRes.status === 429 || cRes.status >= 500))
           if (retryable && attempt < MAX_ATTEMPTS - 1) {
             lastErr = `HTTP ${sRes.ok ? fRes.status : sRes.status}`
             continue
@@ -96,10 +104,11 @@ export default function EmailPage() {
             throw new Error(body?.error ?? `HTTP ${fRes.status}`)
           }
 
-          const [s, f] = await Promise.all([sRes.json(), fRes.json()])
+          const [s, f, c] = await Promise.all([sRes.json(), fRes.json(), cRes.ok ? cRes.json() : []])
           if (!active) return
           setSummary(s)
           setFlows(f)
+          setCampaigns(c)
           setLoading(false)
           return // success
         } catch (e: any) {
@@ -153,6 +162,28 @@ export default function EmailPage() {
     },
   ] : []
 
+  const revenueChart = [...flows]
+    .filter(f => (f.revenue ?? 0) > 0)
+    .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))
+    .slice(0, 8)
+    .map(f => ({ name: truncateLabel(f.name), revenue: Math.round(f.revenue ?? 0) }))
+
+  const ratesChart = [...flows, ...campaigns]
+    .filter(x => x.delivered > 0)
+    .sort((a, b) => b.delivered - a.delivered)
+    .slice(0, 8)
+    .map(x => ({
+      name: truncateLabel(x.name),
+      open_rate: Math.round(x.open_rate * 10) / 10,
+      ctor: Math.round(x.ctor * 10) / 10,
+    }))
+
+  const tooltipStyle = {
+    contentStyle: { background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' },
+    labelStyle: { color: chart.tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 },
+    itemStyle: { color: chart.tooltipText, fontSize: 12 },
+  }
+
   return (
     <div className="flex h-screen bg-bg">
       <Sidebar />
@@ -199,6 +230,44 @@ export default function EmailPage() {
                     />
                   ))}
                 </div>
+
+                {/* Charts */}
+                {(revenueChart.length > 0 || ratesChart.length > 0) && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    {revenueChart.length > 0 && (
+                      <div className="stat-card">
+                        <p className="text-foreground font-bold text-lg mb-1">{t('email.chart.revenue')}</p>
+                        <p className="text-muted-foreground text-sm mb-4"><DateRangeLabel start={startDate} end={endDate} /></p>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={revenueChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                            <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
+                            <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${v.toLocaleString('nl-NL')}`} />
+                            <Tooltip {...tooltipStyle} formatter={(v: number) => [`€${v.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}`, t('email.chart.revenueLabel')]} cursor={{ fill: chart.cursorFill }} />
+                            <Bar dataKey="revenue" fill="#FF4D00" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                    {ratesChart.length > 0 && (
+                      <div className="stat-card">
+                        <p className="text-foreground font-bold text-lg mb-1">{t('email.chart.openVsCtor')}</p>
+                        <p className="text-muted-foreground text-sm mb-4">{t('email.chart.openVsCtorDesc')}</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={ratesChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                            <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
+                            <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                            <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [`${fmt(v)}%`, name === 'open_rate' ? t('email.stat.openRate') : t('email.stat.ctor')]} cursor={{ fill: chart.cursorFill }} />
+                            <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
+                            <Bar dataKey="open_rate" name={t('email.stat.openRate')} fill="#4F7EFF" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="ctor" name={t('email.stat.ctor')} fill="#FBBF24" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* iOS Privacy note */}
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-start gap-3 mb-8">

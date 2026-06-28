@@ -95,3 +95,35 @@ export async function getGA4Sources(start, end, creds) {
     users: Number(row.metricValues[1].value),
   }));
 }
+
+async function getChannelSessions(start, end, channel, creds) {
+  const data = await runReport({
+    dateRanges: [{ startDate: start, endDate: end }],
+    dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+    metrics: [{ name: 'sessions' }],
+    dimensionFilter: {
+      filter: {
+        fieldName: 'sessionDefaultChannelGroup',
+        stringFilter: { matchType: 'EXACT', value: channel },
+      },
+    },
+  }, creds);
+
+  const row = data.rows?.[0];
+  return row ? Number(row.metricValues[0].value) : 0;
+}
+
+export async function getGA4DirectTraffic(start, end, creds, compareStart, compareEnd) {
+  const [sessions, prevSessions] = await Promise.all([
+    getChannelSessions(start, end, 'Direct', creds),
+    compareStart && compareEnd
+      ? getChannelSessions(compareStart, compareEnd, 'Direct', creds)
+      : Promise.resolve(0),
+  ]);
+
+  return {
+    sessions,
+    prev_sessions: prevSessions,
+    growth_pct: prevSessions > 0 ? ((sessions - prevSessions) / prevSessions) * 100 : null,
+  };
+}

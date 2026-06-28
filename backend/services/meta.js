@@ -121,6 +121,73 @@ export async function getMetaAdCreatives(start, end, creds) {
   return rankCreatives(mapped).slice(0, 3);
 }
 
+export async function getMetaAdCreativesChart(start, end, creds, limit = 8) {
+  const res = await axios.get(`${BASE}/${creds.ad_account_id}/ads`, {
+    params: {
+      access_token: creds.access_token,
+      fields: `id,name,effective_status,insights.time_range({"since":"${start}","until":"${end}"}){impressions,clicks,spend,ctr,video_play_actions,video_30_sec_watched_actions,video_avg_time_watched_actions,actions,action_values}`,
+      limit: 50,
+    },
+  });
+
+  const mapped = (res.data.data ?? [])
+    .map(ad => {
+      const ins = ad.insights?.data?.[0];
+      if (!ins) return null;
+      const impressions = parseInt2(ins.impressions);
+      const spend = parseNum(ins.spend);
+      if (impressions === 0 && spend === 0) return null;
+
+      const videoPlays = parseNum(ins.video_play_actions?.[0]?.value);
+      const video30sec = parseNum(ins.video_30_sec_watched_actions?.[0]?.value);
+      const isVideo = videoPlays > 0;
+
+      return {
+        id: ad.id,
+        name: ad.name,
+        is_video: isVideo,
+        thumbstop_rate: impressions > 0 && videoPlays > 0 ? (videoPlays / impressions) * 100 : null,
+        hold_rate: videoPlays > 0 && video30sec > 0 ? (video30sec / videoPlays) * 100 : null,
+        spend,
+        leads: extractActions(ins.actions, 'lead')
+          || extractActions(ins.actions, 'onsite_conversion.lead_grouped')
+          || extractActions(ins.actions, 'offsite_conversion.fb_pixel_lead'),
+      };
+    })
+    .filter(Boolean);
+
+  return rankCreatives(mapped).slice(0, limit);
+}
+
+export async function getMetaDailyInsights(start, end, creds) {
+  const res = await axios.get(`${BASE}/${creds.ad_account_id}/insights`, {
+    params: {
+      access_token: creds.access_token,
+      fields: 'spend,impressions,clicks,actions,date_start',
+      time_range: JSON.stringify({ since: start, until: end }),
+      time_increment: 1,
+      level: 'account',
+    },
+  });
+
+  return (res.data.data ?? []).map(d => {
+    const spend = parseNum(d.spend);
+    const leads = extractActions(d.actions, 'lead')
+      || extractActions(d.actions, 'onsite_conversion.lead_grouped')
+      || extractActions(d.actions, 'offsite_conversion.fb_pixel_lead');
+    const purchases = extractActions(d.actions, 'purchase')
+      || extractActions(d.actions, 'offsite_conversion.fb_pixel_purchase');
+    return {
+      date: d.date_start,
+      spend,
+      clicks: parseInt2(d.clicks),
+      impressions: parseInt2(d.impressions),
+      leads,
+      results: leads + purchases,
+    };
+  }).sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export async function getMetaCampaigns(start, end, creds) {
   const res = await axios.get(`${BASE}/${creds.ad_account_id}/campaigns`, {
     params: {

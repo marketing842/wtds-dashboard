@@ -9,9 +9,14 @@ import { DateRangeLabel } from '@/components/DateRangeLabel'
 import { MetricKpi } from '@/components/MetricLabel'
 import { useDateRange } from '@/lib/date-range-context'
 import { Eye, MousePointerClick, Euro, Loader2, ShoppingCart, Film, Image } from 'lucide-react'
+import {
+  BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ComposedChart, Legend,
+} from 'recharts'
 
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
+import { useChartColors, shortDate, truncateLabel } from '@/lib/chart-theme'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -39,9 +44,12 @@ const RANK_COLOR = ['text-yellow-400', 'text-muted-foreground', 'text-orange-400
 export default function MetaPage() {
   const { startDate, endDate } = useDateRange()
   const { t } = useLanguage()
+  const chart = useChartColors()
   const [summary, setSummary] = useState<any>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [creatives, setCreatives] = useState<any[]>([])
+  const [daily, setDaily] = useState<any[]>([])
+  const [creativesChart, setCreativesChart] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,26 +59,32 @@ export default function MetaPage() {
       setError(null)
       try {
         const { ps, pe } = getPrevRange(startDate, endDate)
-        const [sumRes, sumPrevRes, campRes, creativeRes] = await Promise.all([
+        const [sumRes, sumPrevRes, campRes, creativeRes, dailyRes, chartRes] = await Promise.all([
           apiFetch(`/api/meta/summary?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/summary?start=${ps}&end=${pe}`),
           apiFetch(`/api/meta/campaigns?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/creatives?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/meta/daily?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/meta/creatives-chart?start=${startDate}&end=${endDate}`),
         ])
         if (!sumRes.ok) {
           const body = await sumRes.json().catch(() => ({}))
           const code = body?.code ? ` (code ${body.code})` : ''
           throw new Error((body?.error ?? `HTTP ${sumRes.status}`) + code)
         }
-        const [s, sp, c, cr] = await Promise.all([
+        const [s, sp, c, cr, d, cc] = await Promise.all([
           sumRes.json(),
           sumPrevRes.ok ? sumPrevRes.json() : null,
           campRes.ok ? campRes.json() : [],
           creativeRes.ok ? creativeRes.json() : [],
+          dailyRes.ok ? dailyRes.json() : [],
+          chartRes.ok ? chartRes.json() : [],
         ])
         setSummary({ cur: s, prev: sp })
         setCampaigns(c)
         setCreatives(cr)
+        setDaily(d)
+        setCreativesChart(cc.filter((x: any) => x.is_video && x.thumbstop_rate != null))
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -87,6 +101,24 @@ export default function MetaPage() {
 
   const isLeadsCampaign = cur ? (cur.leads > 0 || cur.purchase_value === 0) : false
   const cpl = cur && cur.leads > 0 && cur.spend > 0 ? cur.spend / cur.leads : 0
+
+  const dailyChart = daily.map(d => ({
+    ...d,
+    label: shortDate(d.date),
+    leads: d.leads ?? 0,
+  }))
+
+  const thumbChart = creativesChart.map(c => ({
+    name: truncateLabel(c.name),
+    thumbstop: Math.round((c.thumbstop_rate ?? 0) * 10) / 10,
+    hold: Math.round((c.hold_rate ?? 0) * 10) / 10,
+  }))
+
+  const tooltipStyle = {
+    contentStyle: { background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' },
+    labelStyle: { color: chart.tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 },
+    itemStyle: { color: chart.tooltipText, fontSize: 12 },
+  }
 
   return (
     <div className="flex h-screen bg-bg">
@@ -164,6 +196,47 @@ export default function MetaPage() {
                     : <MetricKpi label={t('meta.stat.revenue')} value={cur.purchase_value > 0 ? fmtEur(cur.purchase_value) : '—'} tooltipKey="tooltip.roas" />}
                   <MetricKpi label={t('meta.stat.reach')} value={cur.reach >= 1000 ? `${fmt(cur.reach / 1000)}K` : fmt(cur.reach, 0)} tooltipKey="tooltip.reach" />
                 </div>
+
+                {/* Daily trend + thumbstop chart */}
+                {(dailyChart.length > 0 || thumbChart.length > 0) && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    {dailyChart.length > 0 && (
+                      <div className="stat-card">
+                        <p className="text-foreground font-bold text-lg mb-1">{t('meta.chart.dailyTrend')}</p>
+                        <p className="text-muted-foreground text-sm mb-4"><DateRangeLabel start={startDate} end={endDate} /></p>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <ComposedChart data={dailyChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                            <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                            <YAxis yAxisId="left" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${fmt(v, 0)}`} />
+                            <YAxis yAxisId="right" orientation="right" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                            <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
+                            <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
+                            <Bar yAxisId="left" dataKey="spend" name={t('meta.stat.spendShort')} fill="#4F7EFF" radius={[4, 4, 0, 0]} />
+                            <Line yAxisId="right" type="monotone" dataKey="leads" name={t('meta.stat.leads')} stroke="#FF4D00" strokeWidth={2} dot={false} />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                    {thumbChart.length > 0 && (
+                      <div className="stat-card">
+                        <p className="text-foreground font-bold text-lg mb-1">{t('meta.chart.thumbstopHold')}</p>
+                        <p className="text-muted-foreground text-sm mb-4">{t('meta.chart.thumbstopHoldDesc')}</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={thumbChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                            <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
+                            <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                            <Tooltip {...tooltipStyle} formatter={(v: number) => [`${fmt(v)}%`, '']} cursor={{ fill: chart.cursorFill }} />
+                            <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
+                            <Bar dataKey="thumbstop" name={t('meta.stat.thumbstop')} fill="#FF4D00" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="hold" name={t('meta.stat.holdRate')} fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {creatives.length > 0 && (
                   <div className="mb-8">

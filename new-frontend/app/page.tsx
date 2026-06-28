@@ -19,10 +19,14 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
+  Legend,
 } from 'recharts'
 
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
+import { useChartColors, shortDate } from '@/lib/chart-theme'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -63,20 +67,23 @@ export default function OverviewPage() {
   const { startDate, endDate } = useDateRange()
   const { resolvedTheme } = useTheme()
   const { t: tr } = useLanguage()
+  const chart = useChartColors()
   const isDark = resolvedTheme !== 'light'
 
-  // Chart color tokens — theme-aware
-  const chartGrid    = isDark ? '#2E3350' : '#E5E7EB'
-  const chartTick    = isDark ? '#8B92A9' : '#9CA3AF'
-  const tooltipBg    = isDark ? '#21253A' : '#FFFFFF'
-  const tooltipBdr   = isDark ? '#2E3350' : '#E2E6F0'
-  const tooltipText  = isDark ? '#F0F2FF' : '#111827'
+  // Chart color tokens — theme-aware (legacy refs kept for existing charts)
+  const chartGrid    = chart.grid
+  const chartTick    = chart.tick
+  const tooltipBg    = chart.tooltipBg
+  const tooltipBdr   = chart.tooltipBdr
+  const tooltipText  = chart.tooltipText
   const [gAds, setGAds] = useState<any>(null)
   const [gAdsPrev, setGAdsPrev] = useState<any>(null)
   const [meta, setMeta] = useState<any>(null)
   const [metaPrev, setMetaPrev] = useState<any>(null)
   const [klaviyo, setKlaviyo] = useState<any>(null)
   const [gsc, setGsc] = useState<any>(null)
+  const [gAdsDaily, setGAdsDaily] = useState<any[]>([])
+  const [metaDaily, setMetaDaily] = useState<any[]>([])
   // Per-channel loading flags instead of one global spinner
   const [loadingChannels, setLoadingChannels] = useState({ gAds: true, meta: true, klaviyo: true, gsc: true })
   const [errors, setErrors] = useState<ChannelErrors>({})
@@ -86,6 +93,7 @@ export default function OverviewPage() {
       // Reset state & show loading per channel immediately
       setGAds(null); setGAdsPrev(null); setMeta(null); setMetaPrev(null)
       setKlaviyo(null); setGsc(null)
+      setGAdsDaily([]); setMetaDaily([])
       setErrors({})
       setLoadingChannels({ gAds: true, meta: true, klaviyo: true, gsc: true })
 
@@ -124,6 +132,12 @@ export default function OverviewPage() {
         .then(d => setGsc(d))
         .catch(e => setErrors(prev => ({ ...prev, gsc: e.message })))
         .finally(() => setLoadingChannels(prev => ({ ...prev, gsc: false })))
+
+      safeFetch(`/api/google-ads/daily?start=${startDate}&end=${endDate}`)
+        .then(d => setGAdsDaily(d)).catch(() => {})
+
+      safeFetch(`/api/meta/daily?start=${startDate}&end=${endDate}`)
+        .then(d => setMetaDaily(d)).catch(() => {})
     }, 600)
     return () => clearTimeout(t)
   }, [startDate, endDate])
@@ -159,6 +173,23 @@ export default function OverviewPage() {
     { channel: tr('dashboard.channel.meta'), ctr: meta?.ctr ?? 0 },
     { channel: tr('dashboard.channel.gsc'), ctr: gsc?.ctr ?? 0 },
   ]
+
+  const dailyLeadsMap = new Map<string, { date: string; label: string; gAds: number; meta: number; total: number }>()
+  for (const d of gAdsDaily) {
+    const cur = dailyLeadsMap.get(d.date) ?? { date: d.date, label: shortDate(d.date), gAds: 0, meta: 0, total: 0 }
+    cur.gAds += d.conversions ?? 0
+    dailyLeadsMap.set(d.date, cur)
+  }
+  for (const d of metaDaily) {
+    const cur = dailyLeadsMap.get(d.date) ?? { date: d.date, label: shortDate(d.date), gAds: 0, meta: 0, total: 0 }
+    cur.meta += d.leads ?? 0
+    dailyLeadsMap.set(d.date, cur)
+  }
+  const dailyLeadsChart = [...dailyLeadsMap.values()]
+    .map(d => ({ ...d, total: d.gAds + d.meta }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  const momLeads = pctChg(totalLeads, prevTotalLeads)
 
   const insights: Array<{ type: 'good' | 'warn'; title: string; detail: string }> = []
 
@@ -382,6 +413,53 @@ export default function OverviewPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Pipeline + MoM */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                      {[
+                        { label: tr('dashboard.pipeline.impressions'), value: totalImpressions },
+                        { label: tr('dashboard.pipeline.clicks'), value: (gAds?.clicks ?? 0) + (meta?.clicks ?? 0) },
+                        { label: tr('dashboard.pipeline.leads'), value: totalLeads },
+                        { label: tr('dashboard.pipeline.momLeads'), value: momLeads, isPct: true },
+                      ].map(item => (
+                        <div key={item.label} className="stat-card py-4">
+                          <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                          {'isPct' in item && item.isPct ? (
+                            <p className={`text-xl font-bold ${momLeads != null && momLeads >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                              {momLeads != null ? `${momLeads >= 0 ? '+' : ''}${fmt(momLeads)}%` : '—'}
+                            </p>
+                          ) : (
+                            <p className="text-xl font-bold text-foreground">{fmt(item.value as number, 0)}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Daily leads trend */}
+                    {dailyLeadsChart.length > 0 && (
+                      <div className="stat-card mb-8">
+                        <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.leadsTrend')}</p>
+                        <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.chart.leadsTrendDesc')}</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <LineChart data={dailyLeadsChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
+                            <XAxis dataKey="label" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                            <YAxis tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                            <Tooltip
+                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                              labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                              itemStyle={{ color: tooltipText, fontSize: 12 }}
+                              formatter={(v: number, name: string) => [fmt(v, 0), name === 'gAds' ? tr('dashboard.channel.gAds') : name === 'meta' ? tr('dashboard.channel.meta') : tr('dashboard.stat.totalLeads')]}
+                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 12, color: chartTick }} />
+                            <Line type="monotone" dataKey="total" name={tr('dashboard.stat.totalLeads')} stroke="#10B981" strokeWidth={2} dot={false} />
+                            <Line type="monotone" dataKey="gAds" name={tr('dashboard.channel.gAds')} stroke="#FF4D00" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                            <Line type="monotone" dataKey="meta" name={tr('dashboard.channel.meta')} stroke="#4F7EFF" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
 
                     {/* Charts */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

@@ -141,3 +141,72 @@ export async function getGoogleAdsKeywords(customerId, start, end, creds) {
     avg_cpc:     (Number(r.metrics.averageCpc ?? r.metrics.average_cpc ?? 0)) / 1_000_000
   }));
 }
+
+export async function getGoogleAdsDailySeries(customerId, start, end, creds) {
+  const rows = await gaqlQuery(customerId, `
+    SELECT
+      segments.date,
+      metrics.clicks,
+      metrics.conversions,
+      metrics.cost_micros
+    FROM campaign
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+      AND campaign.status != 'REMOVED'
+    ORDER BY segments.date
+  `, creds);
+
+  const byDate = new Map();
+  for (const row of rows) {
+    const date = row.segments?.date;
+    if (!date) continue;
+    const cur = byDate.get(date) ?? { date, clicks: 0, conversions: 0, cost: 0 };
+    cur.clicks      += Number(row.metrics.clicks ?? 0);
+    cur.conversions += Number(row.metrics.conversions ?? 0);
+    cur.cost        += Number(row.metrics.costMicros ?? row.metrics.cost_micros ?? 0) / 1_000_000;
+    byDate.set(date, cur);
+  }
+
+  return [...byDate.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(d => ({
+      ...d,
+      cpa: d.conversions > 0 ? d.cost / d.conversions : 0,
+    }));
+}
+
+export async function getGoogleAdsImpressionShare(customerId, start, end, creds) {
+  const rows = await gaqlQuery(customerId, `
+    SELECT
+      metrics.impressions,
+      metrics.search_impression_share,
+      metrics.search_budget_lost_impression_share,
+      metrics.search_rank_lost_impression_share
+    FROM campaign
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+      AND campaign.status != 'REMOVED'
+      AND campaign.advertising_channel_type = 'SEARCH'
+  `, creds);
+
+  if (!rows.length) {
+    return { won: 0, lost_budget: 0, lost_rank: 0 };
+  }
+
+  let totalImp = 0;
+  let won = 0, lostBudget = 0, lostRank = 0;
+  for (const row of rows) {
+    const imp = Number(row.metrics.impressions ?? 0);
+    if (imp === 0) continue;
+    totalImp += imp;
+    won        += imp * Number(row.metrics.searchImpressionShare ?? row.metrics.search_impression_share ?? 0);
+    lostBudget += imp * Number(row.metrics.searchBudgetLostImpressionShare ?? row.metrics.search_budget_lost_impression_share ?? 0);
+    lostRank   += imp * Number(row.metrics.searchRankLostImpressionShare ?? row.metrics.search_rank_lost_impression_share ?? 0);
+  }
+
+  if (totalImp === 0) return { won: 0, lost_budget: 0, lost_rank: 0 };
+
+  return {
+    won:         Math.round((won / totalImp) * 1000) / 10,
+    lost_budget: Math.round((lostBudget / totalImp) * 1000) / 10,
+    lost_rank:   Math.round((lostRank / totalImp) * 1000) / 10,
+  };
+}

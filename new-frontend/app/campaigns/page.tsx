@@ -7,10 +7,15 @@ import { StatCard } from '@/components/StatCard'
 import { MetricKpi } from '@/components/MetricLabel'
 import { useDateRange } from '@/lib/date-range-context'
 import { MousePointerClick, Eye, Euro, Target, Loader2, RefreshCw } from 'lucide-react'
+import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ComposedChart, Legend,
+} from 'recharts'
 
 import { apiFetch } from '@/lib/api'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
 import { useLanguage } from '@/lib/language-context'
+import { useChartColors, shortDate } from '@/lib/chart-theme'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -45,9 +50,13 @@ const MATCH_BADGE: Record<string, { key: string; color: string }> = {
 export default function CampaignsPage() {
   const { startDate, endDate } = useDateRange()
   const { t } = useLanguage()
+  const chart = useChartColors()
   const [summary, setSummary] = useState<any>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [keywords, setKeywords] = useState<any[]>([])
+  const [daily, setDaily] = useState<any[]>([])
+  const [impressionShare, setImpressionShare] = useState<any>(null)
+  const [brandUplift, setBrandUplift] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [kwLoading, setKwLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,19 +68,28 @@ export default function CampaignsPage() {
       setError(null)
       try {
         const { prev_start, prev_end } = getPrevRange(startDate, endDate)
-        const [sumRes, sumPrevRes, campRes] = await Promise.all([
+        const [sumRes, sumPrevRes, campRes, dailyRes, isRes, brandRes] = await Promise.all([
           apiFetch(`/api/google-ads/summary?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/google-ads/summary?start=${prev_start}&end=${prev_end}`),
           apiFetch(`/api/google-ads/campaigns?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/google-ads/daily?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/google-ads/impression-share?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/brand-uplift?start=${startDate}&end=${endDate}&compare_start=${prev_start}&compare_end=${prev_end}`),
         ])
         if (!sumRes.ok) throw new Error(`Google Ads: ${sumRes.status}`)
-        const [s, sp, c] = await Promise.all([
+        const [s, sp, c, d, is, brand] = await Promise.all([
           sumRes.json(),
           sumPrevRes.ok ? sumPrevRes.json() : null,
           campRes.ok ? campRes.json() : [],
+          dailyRes.ok ? dailyRes.json() : [],
+          isRes.ok ? isRes.json() : null,
+          brandRes.ok ? brandRes.json() : null,
         ])
         setSummary({ current: s, prev: sp })
         setCampaigns(c)
+        setDaily(d)
+        setImpressionShare(is)
+        setBrandUplift(brand)
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -115,6 +133,23 @@ export default function CampaignsPage() {
   const topKeywords = [...keywords]
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 10)
+
+  const dailyChart = daily.map(d => ({
+    ...d,
+    label: shortDate(d.date),
+  }))
+
+  const branded = brandUplift?.branded
+  const brandTrend = (brandUplift?.trend ?? []).map((d: any) => ({
+    ...d,
+    label: shortDate(d.date),
+  }))
+
+  const tooltipStyle = {
+    contentStyle: { background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' },
+    labelStyle: { color: chart.tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 },
+    itemStyle: { color: chart.tooltipText, fontSize: 12 },
+  }
 
   return (
     <div className="flex h-screen bg-bg">
@@ -178,6 +213,120 @@ export default function CampaignsPage() {
                   <MetricKpi label={t('campaigns.stat.avgCpc')} value={fmtEur(cur.avg_cpc)} tooltipKey="tooltip.kpk" />
                   <MetricKpi label={t('campaigns.stat.cpa')} value={cur.conversions > 0 ? fmtEur(cur.cpa) : '—'} tooltipKey="tooltip.kpa" accent />
                 </div>
+
+                {/* Impression share */}
+                {impressionShare && (impressionShare.won > 0 || impressionShare.lost_budget > 0) && (
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.chart.impressionShare')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('campaigns.chart.impressionShareDesc')}</p>
+                    <div className="flex h-8 rounded-lg overflow-hidden mb-3">
+                      {impressionShare.won > 0 && (
+                        <div className="h-full flex items-center justify-center text-xs font-bold text-white" style={{ width: `${impressionShare.won}%`, background: '#FF4D00', minWidth: impressionShare.won > 8 ? undefined : '2rem' }}>
+                          {impressionShare.won >= 12 ? `${fmt(impressionShare.won)}%` : ''}
+                        </div>
+                      )}
+                      {impressionShare.lost_budget > 0 && (
+                        <div className="h-full flex items-center justify-center text-xs font-bold text-amber-950" style={{ width: `${impressionShare.lost_budget}%`, background: '#FBBF24', minWidth: impressionShare.lost_budget > 8 ? undefined : '2rem' }}>
+                          {impressionShare.lost_budget >= 12 ? `${fmt(impressionShare.lost_budget)}%` : ''}
+                        </div>
+                      )}
+                      {impressionShare.lost_rank > 0 && (
+                        <div className="h-full flex items-center justify-center text-xs font-bold text-white" style={{ width: `${impressionShare.lost_rank}%`, background: '#64748B', minWidth: impressionShare.lost_rank > 8 ? undefined : '2rem' }}>
+                          {impressionShare.lost_rank >= 12 ? `${fmt(impressionShare.lost_rank)}%` : ''}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-xs">
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#FF4D00' }} />{t('campaigns.is.won')} {fmt(impressionShare.won)}%</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400" />{t('campaigns.is.budget')} {fmt(impressionShare.lost_budget)}%</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-slate-500" />{t('campaigns.is.rank')} {fmt(impressionShare.lost_rank)}%</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Daily charts */}
+                {dailyChart.length > 0 && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div className="stat-card">
+                      <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.chart.clicksConversions')}</p>
+                      <p className="text-muted-foreground text-sm mb-4"><DateRangeLabel start={startDate} end={endDate} /></p>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <ComposedChart data={dailyChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                          <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                          <YAxis yAxisId="left" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <YAxis yAxisId="right" orientation="right" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
+                          <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
+                          <Bar yAxisId="left" dataKey="clicks" name={t('campaigns.stat.clicks')} fill="#FF4D00" radius={[4, 4, 0, 0]} />
+                          <Line yAxisId="right" type="monotone" dataKey="conversions" name={t('campaigns.stat.conversions')} stroke="#10B981" strokeWidth={2} dot={false} />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="stat-card">
+                      <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.chart.cpaTrend')}</p>
+                      <p className="text-muted-foreground text-sm mb-4"><DateRangeLabel start={startDate} end={endDate} /></p>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={dailyChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                          <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                          <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${fmt(v, 0)}`} />
+                          <Tooltip {...tooltipStyle} formatter={(v: number) => [fmtEur(v), t('campaigns.stat.cpa')]} cursor={{ fill: chart.cursorFill }} />
+                          <Line type="monotone" dataKey="cpa" stroke="#FF4D00" strokeWidth={2} dot={false} fill="rgba(255,77,0,0.07)" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {/* Brand uplift */}
+                {branded?.configured && (
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.brand.title')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('campaigns.brand.desc')}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                      <div className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                        <p className="text-xs text-muted-foreground mb-1">{t('campaigns.brand.clicks')}</p>
+                        <p className="text-xl font-bold text-foreground">{fmt(branded.clicks, 0)}</p>
+                        {branded.growth_pct != null && (
+                          <p className={`text-xs mt-1 ${branded.growth_pct >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                            {branded.growth_pct >= 0 ? '+' : ''}{fmt(branded.growth_pct)}% {t('common.vsPrev')}
+                          </p>
+                        )}
+                      </div>
+                      <div className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                        <p className="text-xs text-muted-foreground mb-1">{t('campaigns.brand.ctr')}</p>
+                        <p className="text-xl font-bold text-accent">{fmt(branded.ctr)}%</p>
+                      </div>
+                      {brandUplift?.direct && (
+                        <div className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                          <p className="text-xs text-muted-foreground mb-1">{t('campaigns.brand.direct')}</p>
+                          <p className="text-xl font-bold text-foreground">{fmt(brandUplift.direct.sessions, 0)}</p>
+                          {brandUplift.direct.growth_pct != null && (
+                            <p className={`text-xs mt-1 ${brandUplift.direct.growth_pct >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                              {brandUplift.direct.growth_pct >= 0 ? '+' : ''}{fmt(brandUplift.direct.growth_pct)}%
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <div className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                        <p className="text-xs text-muted-foreground mb-1">{t('campaigns.brand.terms')}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{branded.terms.join(', ')}</p>
+                      </div>
+                    </div>
+                    {brandTrend.length > 0 && (
+                      <ResponsiveContainer width="100%" height={180}>
+                        <LineChart data={brandTrend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                          <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                          <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <Tooltip {...tooltipStyle} formatter={(v: number) => [fmt(v, 0), t('campaigns.brand.clicks')]} cursor={{ fill: chart.cursorFill }} />
+                          <Line type="monotone" dataKey="clicks" stroke="#FF4D00" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                )}
 
                 {/* Top Keywords */}
                 <div className="mb-8">

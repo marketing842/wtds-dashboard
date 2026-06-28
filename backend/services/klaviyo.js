@@ -8,7 +8,8 @@ const STATS = [
   'opens', 'open_rate', 'opens_unique',
   'clicks', 'click_rate', 'click_to_open_rate', 'clicks_unique',
   'unsubscribes', 'unsubscribe_rate',
-  'delivered', 'delivery_rate', 'recipients'
+  'delivered', 'delivery_rate', 'recipients',
+  'conversions', 'conversion_value',
 ];
 
 function headers(creds) {
@@ -43,13 +44,13 @@ async function withRetry(fn, retries = 4) {
   }
 }
 
-function reportBody(type, start, end) {
+function reportBody(type, start, end, creds) {
   return {
     data: {
       type,
       attributes: {
         timeframe: { start: `${start}T00:00:00`, end: `${end}T23:59:59` },
-        conversion_metric_id: CONVERSION_METRIC,
+        conversion_metric_id: creds.conversion_metric_id || CONVERSION_METRIC,
         statistics: STATS
       }
     }
@@ -71,7 +72,7 @@ async function fetchFlowReport(start, end, creds) {
   return dedupe(`flow_${creds.api_key}_${start}_${end}`, async () => {
     const res = await withRetry(() => axios.post(
       `${BASE}/flow-values-reports/`,
-      reportBody('flow-values-report', start, end),
+      reportBody('flow-values-report', start, end, creds),
       { headers: headers(creds) }
     ));
     return res.data?.data?.attributes?.results ?? [];
@@ -82,7 +83,7 @@ async function fetchCampaignReport(start, end, creds) {
   return dedupe(`campaign_${creds.api_key}_${start}_${end}`, async () => {
     const res = await withRetry(() => axios.post(
       `${BASE}/campaign-values-reports/`,
-      reportBody('campaign-values-report', start, end),
+      reportBody('campaign-values-report', start, end, creds),
       { headers: headers(creds) }
     ));
     return res.data?.data?.attributes?.results ?? [];
@@ -117,7 +118,7 @@ function aggregateResults(results, idFn, nameMap) {
     const id = idFn(item);
     if (!id) continue;
     if (!byId[id]) {
-      byId[id] = { id, name: nameMap[id] ?? id, delivered: 0, recipients: 0, opens: 0, clicks: 0, unsubscribes: 0 };
+      byId[id] = { id, name: nameMap[id] ?? id, delivered: 0, recipients: 0, opens: 0, clicks: 0, unsubscribes: 0, revenue: 0, conversions: 0 };
     }
     const s = item.statistics ?? {};
     byId[id].delivered    += s.delivered      ?? 0;
@@ -125,6 +126,8 @@ function aggregateResults(results, idFn, nameMap) {
     byId[id].opens        += s.opens_unique   ?? s.opens  ?? 0;
     byId[id].clicks       += s.clicks_unique  ?? s.clicks ?? 0;
     byId[id].unsubscribes += s.unsubscribes   ?? 0;
+    byId[id].revenue      += s.conversion_value ?? s.revenue ?? 0;
+    byId[id].conversions  += s.conversions ?? 0;
   }
   return Object.values(byId).map(f => {
     const d = f.delivered || 1;
@@ -144,8 +147,10 @@ function sumAll(items) {
     recipients:   acc.recipients   + f.recipients,
     opens:        acc.opens        + f.opens,
     clicks:       acc.clicks       + f.clicks,
-    unsubscribes: acc.unsubscribes + f.unsubscribes
-  }), { delivered: 0, recipients: 0, opens: 0, clicks: 0, unsubscribes: 0 });
+    unsubscribes: acc.unsubscribes + f.unsubscribes,
+    revenue:      acc.revenue      + (f.revenue ?? 0),
+    conversions:  acc.conversions  + (f.conversions ?? 0),
+  }), { delivered: 0, recipients: 0, opens: 0, clicks: 0, unsubscribes: 0, revenue: 0, conversions: 0 });
 }
 
 function withRates(totals) {

@@ -16,17 +16,23 @@ import {
 import {
   getGoogleAdsSummary,
   getGoogleAdsCampaigns,
-  getGoogleAdsKeywords
+  getGoogleAdsKeywords,
+  getGoogleAdsDailySeries,
+  getGoogleAdsImpressionShare,
 } from './services/google-ads.js';
 import {
   getMetaSummary,
   getMetaCampaigns,
   getMetaAdCreatives,
+  getMetaDailyInsights,
+  getMetaAdCreativesChart,
 } from './services/meta.js';
 import {
   getSearchConsoleSummary,
   getTopQueries,
   getTopPages,
+  getBrandedSearchSummary,
+  getBrandedSearchTrend,
 } from './services/search-console.js';
 import {
   getInstagramSummary,
@@ -36,6 +42,7 @@ import {
   getGA4Summary,
   getGA4TopPages,
   getGA4Sources,
+  getGA4DirectTraffic,
 } from './services/analytics.js';
 
 const app = express();
@@ -68,6 +75,18 @@ async function cached(key, fn, ttl) {
   const data = await fn();
   setCached(key, data, ttl);
   return data;
+}
+
+async function scCredsWithBrand(req) {
+  const sc = { ...req.client.creds.search_console, clientId: req.client.id };
+  if (sc.brand_terms) return sc;
+  const { data: client } = await supabaseAdmin
+    .from('clients')
+    .select('name')
+    .eq('id', req.client.id)
+    .single();
+  const token = client?.name?.toLowerCase()?.split(/[\s\-]+/).filter(Boolean)[0];
+  return { ...sc, brand_terms: token ? [token] : [] };
 }
 
 // ── Health (public) ───────────────────────────────────────────
@@ -264,6 +283,40 @@ app.get('/api/google-ads/keywords', async (req, res) => {
   }
 });
 
+app.get('/api/google-ads/daily', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.google_ads) return res.status(422).json({ error: 'Google Ads credentials not configured for this client' });
+    const gCreds = { ...creds.google_ads, clientId: req.client.id };
+    const cid = creds.google_ads.customer_id;
+    const data = await cached(`gad_${req.client.id}_${start}_${end}`, () => getGoogleAdsDailySeries(cid, start, end, gCreds), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'Google Ads');
+    console.error('[google-ads/daily]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/google-ads/impression-share', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.google_ads) return res.status(422).json({ error: 'Google Ads credentials not configured for this client' });
+    const gCreds = { ...creds.google_ads, clientId: req.client.id };
+    const cid = creds.google_ads.customer_id;
+    const data = await cached(`gais_${req.client.id}_${start}_${end}`, () => getGoogleAdsImpressionShare(cid, start, end, gCreds), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'Google Ads');
+    console.error('[google-ads/impression-share]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
 // ── Meta Ads ─────────────────────────────────────────────────
 
 const META_EMPTY_SUMMARY = { impressions: 0, clicks: 0, spend: 0, reach: 0, cpc: 0, ctr: 0, purchases: 0, purchase_value: 0, roas: 0, leads: 0 };
@@ -329,6 +382,40 @@ app.get('/api/meta/creatives', async (req, res) => {
   }
 });
 
+app.get('/api/meta/daily', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.meta) return res.status(422).json({ error: 'Meta credentials not configured for this client' });
+    const data = await cached(`md_${req.client.id}_${start}_${end}`, () => getMetaDailyInsights(start, end, creds.meta), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const fb = err.response?.data?.error;
+    if (fb?.code === 3018) return res.json([]);
+    const out = describeApiError(err, 'Meta');
+    console.error('[meta/daily]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/meta/creatives-chart', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.meta) return res.status(422).json({ error: 'Meta credentials not configured for this client' });
+    const data = await cached(`mcc_${req.client.id}_${start}_${end}`, () => getMetaAdCreativesChart(start, end, creds.meta), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const fb = err.response?.data?.error;
+    if (fb?.code === 3018) return res.json([]);
+    const out = describeApiError(err, 'Meta');
+    console.error('[meta/creatives-chart]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
 // ── Google Search Console ────────────────────────────────────
 
 app.get('/api/search-console/summary', async (req, res) => {
@@ -375,6 +462,38 @@ app.get('/api/search-console/pages', async (req, res) => {
   } catch (err) {
     const out = describeApiError(err, 'Search Console');
     console.error('[search-console/pages]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/brand-uplift', async (req, res) => {
+  try {
+    const { start, end, compare_start, compare_end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    const scCreds = creds.search_console ? await scCredsWithBrand(req) : null;
+    const ga4Creds = creds.ga4 ? { ...creds.ga4, clientId: req.client.id } : null;
+
+    const [branded, trend, direct] = await Promise.all([
+      scCreds
+        ? cached(`bus_${req.client.id}_${start}_${end}_${compare_start}_${compare_end}`, () =>
+            getBrandedSearchSummary(start, end, scCreds, compare_start, compare_end))
+        : Promise.resolve({ configured: false, terms: [], clicks: 0, impressions: 0, growth_pct: null, prev_clicks: 0 }),
+      scCreds
+        ? cached(`but_${req.client.id}_${start}_${end}`, () => getBrandedSearchTrend(start, end, scCreds))
+        : Promise.resolve([]),
+      ga4Creds && compare_start && compare_end
+        ? cached(`bud_${req.client.id}_${start}_${end}_${compare_start}_${compare_end}`, () =>
+            getGA4DirectTraffic(start, end, ga4Creds, compare_start, compare_end))
+        : ga4Creds
+          ? cached(`bud_${req.client.id}_${start}_${end}`, () => getGA4DirectTraffic(start, end, ga4Creds))
+          : Promise.resolve(null),
+    ]);
+
+    res.json({ branded, trend, direct });
+  } catch (err) {
+    const out = describeApiError(err, 'Brand uplift');
+    console.error('[brand-uplift]', out.detail);
     res.status(500).json(out);
   }
 });
