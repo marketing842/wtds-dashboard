@@ -274,23 +274,19 @@ export default function MetaOrganischPage() {
                   )}
                 </div>
 
-                {(summary?.reach_split_available || summary?.reach_split_available === false) && (
+                {summary?.reach_split_available && (
                   <div className="stat-card mb-8">
                     <p className="text-foreground font-bold text-lg mb-1">{t('organisch.reachSplit')}</p>
-                    {summary.reach_split_available ? (
-                      <div className="grid grid-cols-2 gap-6 mt-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">{t('organisch.reachFollowers')}</p>
-                          <p className="text-2xl font-bold text-foreground">{fmtK(summary.followers_reach ?? 0)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">{t('organisch.reachNonFollowers')}</p>
-                          <p className="text-2xl font-bold text-accent">{fmtK(summary.non_followers_reach ?? 0)}</p>
-                        </div>
+                    <div className="grid grid-cols-2 gap-6 mt-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">{t('organisch.reachFollowers')}</p>
+                        <p className="text-2xl font-bold text-foreground">{fmtK(summary.followers_reach ?? 0)}</p>
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground mt-2">{t('organisch.reachSplitUnavailable')}</p>
-                    )}
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">{t('organisch.reachNonFollowers')}</p>
+                        <p className="text-2xl font-bold text-accent">{fmtK(summary.non_followers_reach ?? 0)}</p>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -322,9 +318,7 @@ export default function MetaOrganischPage() {
                       </div>
                     )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground mb-8">{t('organisch.noFacebook')}</p>
-                )}
+                ) : null}
 
                 {/* Best posts + Chart */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

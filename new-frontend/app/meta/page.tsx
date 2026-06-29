@@ -106,6 +106,8 @@ export default function MetaPage() {
   const prev = summary?.prev
   const active = campaigns.filter(c => c.status === 'ACTIVE')
   const inactive = campaigns.filter(c => c.status !== 'ACTIVE')
+  const visibleCampaigns = campaigns.filter(c => c.status === 'ACTIVE' || c.spend > 0 || c.impressions > 0)
+  const hiddenInactiveCount = campaigns.length - visibleCampaigns.length
 
   const isLeadsCampaign = cur ? (cur.leads > 0 || cur.purchase_value === 0) : false
   const cpl = cur && cur.leads > 0 && cur.spend > 0 ? cur.spend / cur.leads : 0
@@ -384,11 +386,11 @@ export default function MetaPage() {
                     </p>
                   </div>
 
-                  {campaigns.length === 0 ? (
+                  {visibleCampaigns.length === 0 ? (
                     <p className="text-muted-foreground text-sm">{t('meta.noCampaigns')}</p>
                   ) : (
                     <div className="space-y-4">
-                      {campaigns.map(c => (
+                      {visibleCampaigns.map(c => (
                         <div key={c.id} className="stat-card">
                           <div className="flex items-start justify-between mb-5">
                             <p className="text-foreground font-semibold text-base">{c.name}</p>
@@ -407,10 +409,10 @@ export default function MetaPage() {
                               { label: t('meta.stat.clicks'), value: fmt(c.clicks, 0) },
                               { label: t('meta.stat.ctr'), value: `${fmt(c.ctr)}%` },
                               { label: t('meta.stat.spendShort'), value: fmtEur(c.spend) },
-                              { label: c.leads > 0 ? t('meta.stat.leads') : t('meta.stat.purchases'), value: String(c.leads > 0 ? c.leads : c.purchases) },
+                              { label: isLeadsCampaign ? t('meta.stat.leads') : t('meta.stat.purchases'), value: String(isLeadsCampaign ? c.leads : c.purchases) },
                               c.roas > 0
                                 ? { label: t('meta.stat.roas'), value: `${fmt(c.roas)}x`, accent: true }
-                                : { label: c.leads > 0 ? t('meta.stat.cpl') : t('meta.stat.roas'), value: c.leads > 0 && c.spend > 0 ? fmtEur(c.spend / c.leads) : '—', accent: true },
+                                : { label: isLeadsCampaign ? t('meta.stat.cpl') : t('meta.stat.roas'), value: isLeadsCampaign && c.leads > 0 && c.spend > 0 ? fmtEur(c.spend / c.leads) : '—', accent: true },
                             ].map(m => (
                               <div key={m.label}>
                                 <p className="text-muted-foreground text-xs mb-1">{m.label}</p>
@@ -439,7 +441,7 @@ export default function MetaPage() {
                                       <div><span className="text-muted-foreground">{t('meta.stat.spendShort')}</span><p className="font-semibold">{fmtEur(a.spend)}</p></div>
                                       <div><span className="text-muted-foreground">{t('meta.stat.clicks')}</span><p className="font-semibold">{fmt(a.clicks, 0)}</p></div>
                                       <div><span className="text-muted-foreground">{t('meta.stat.ctr')}</span><p className="font-semibold">{fmt(a.ctr)}%</p></div>
-                                      <div><span className="text-muted-foreground">{a.leads > 0 ? t('meta.stat.leads') : t('meta.stat.purchases')}</span><p className="font-semibold">{a.leads > 0 ? a.leads : a.purchases}</p></div>
+                                      <div><span className="text-muted-foreground">{isLeadsCampaign ? t('meta.stat.leads') : t('meta.stat.purchases')}</span><p className="font-semibold">{isLeadsCampaign ? a.leads : a.purchases}</p></div>
                                       <div><span className="text-muted-foreground">{t('meta.stat.impressions')}</span><p className="font-semibold">{a.impressions >= 1000 ? `${fmt(a.impressions / 1000)}K` : a.impressions}</p></div>
                                     </div>
                                   </div>
@@ -450,6 +452,9 @@ export default function MetaPage() {
                         </div>
                       ))}
                     </div>
+                  )}
+                  {hiddenInactiveCount > 0 && (
+                    <p className="text-muted-foreground text-sm mt-4">{hiddenInactiveCount} {t('meta.campaignsHiddenInactive')}</p>
                   )}
                 </div>
               </>

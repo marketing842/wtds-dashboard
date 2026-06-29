@@ -9,7 +9,7 @@ import { useDateRange } from '@/lib/date-range-context'
 import { MousePointerClick, Eye, Euro, Target, Loader2, RefreshCw } from 'lucide-react'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ComposedChart, Legend, ReferenceLine, Cell,
+  ResponsiveContainer, ComposedChart, Legend, Cell, Rectangle,
 } from 'recharts'
 
 import { apiFetch } from '@/lib/api'
@@ -180,6 +180,24 @@ export default function CampaignsPage() {
     ctr: Math.round(b.ctr * 10) / 10,
     benchmark: b.benchmark_ctr,
   }))
+  const benchmarkYMax = benchmarkChart.length
+    ? Math.max(...benchmarkChart.flatMap(b => [b.ctr, b.benchmark]), 6) * 1.12
+    : 10
+
+  function BenchmarkTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+    if (!active || !payload?.length) return null
+    const row = payload[0]?.payload as { name: string; ctr: number; benchmark: number }
+    if (!row) return null
+    const above = row.ctr >= row.benchmark
+    const ctrColor = above ? '#10B981' : '#FF4D00'
+    return (
+      <div style={{ background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}>
+        <p style={{ fontWeight: 700, marginBottom: 6 }}>{row.name}</p>
+        <p style={{ fontSize: 12, margin: '2px 0', color: ctrColor }}>{t('campaigns.stat.ctr')}: {fmt(row.ctr)}%</p>
+        <p style={{ fontSize: 12, margin: '2px 0', color: '#A78BFA' }}>{t('campaigns.benchmarkLine')}: {fmt(row.benchmark)}%</p>
+      </div>
+    )
+  }
 
   const tooltipStyle = {
     contentStyle: { background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' },
@@ -307,20 +325,29 @@ export default function CampaignsPage() {
                   <div className="stat-card mb-8">
                     <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.channelBenchmarks')}</p>
                     <p className="text-muted-foreground text-sm mb-4">{t('campaigns.channelBenchmarksDesc')}</p>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={benchmarkChart} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={benchmarkChart} barGap={6} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                         <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${fmt(v)}%`} domain={[0, 'auto']} />
-                        <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [`${fmt(v)}%`, name === 'benchmark' ? t('campaigns.benchmarkLine') : 'CTR']} />
-                        <Bar dataKey="ctr" name="CTR" radius={[4, 4, 0, 0]}>
+                        <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${fmt(v)}%`} domain={[0, benchmarkYMax]} />
+                        <Tooltip content={<BenchmarkTooltip />} cursor={{ fill: chart.cursorFill }} />
+                        <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
+                        <Bar dataKey="benchmark" name={t('campaigns.benchmarkLine')} fill="#8B5CF6" fillOpacity={0.35} radius={[4, 4, 0, 0]} maxBarSize={36} />
+                        <Bar
+                          dataKey="ctr"
+                          name={t('campaigns.stat.ctr')}
+                          radius={[4, 4, 0, 0]}
+                          maxBarSize={36}
+                          activeBar={(props: any) => {
+                            const row = benchmarkChart[props.index]
+                            const fill = row && row.ctr >= row.benchmark ? '#059669' : '#EA580C'
+                            return <Rectangle {...props} fill={fill} stroke={fill} strokeWidth={1} />
+                          }}
+                        >
                           {benchmarkChart.map((entry, i) => (
                             <Cell key={i} fill={entry.ctr >= entry.benchmark ? '#10B981' : '#FF4D00'} />
                           ))}
                         </Bar>
-                        {benchmarkChart.map((entry, i) => (
-                          <ReferenceLine key={`ref-${i}`} y={entry.benchmark} stroke="#8B5CF6" strokeDasharray="4 4" label={{ value: `${entry.benchmark}%`, fill: chart.tick, fontSize: 10 }} />
-                        ))}
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

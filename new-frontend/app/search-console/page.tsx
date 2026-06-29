@@ -99,6 +99,9 @@ export default function SearchConsolePage() {
 
   const cur = summary?.cur
   const prev = summary?.prev
+  const pagespeedUnavailable = pagespeed?.error && (
+    pagespeed.error.includes('Quota exceeded') || pagespeed.error.includes('quota')
+  )
 
   return (
     <div className="flex h-screen bg-bg">
@@ -182,7 +185,7 @@ export default function SearchConsolePage() {
                     </div>
                   )}
 
-                  {pagespeed?.configured && (
+                  {pagespeed?.configured && !pagespeedUnavailable && (
                     <div className="stat-card">
                       <p className="text-foreground font-bold text-lg mb-1">{t('search.pagespeed')}</p>
                       <p className="text-muted-foreground text-sm mb-4">{t('search.pagespeedDesc')}</p>
@@ -203,7 +206,7 @@ export default function SearchConsolePage() {
                           )}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground">{pagespeed.error ?? t('search.pagespeedError')}</p>
+                        <p className="text-sm text-muted-foreground">{t('search.pagespeedError')}</p>
                       )}
                     </div>
                   )}
