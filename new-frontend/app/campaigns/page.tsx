@@ -137,7 +137,25 @@ export default function CampaignsPage() {
   const dailyChart = daily.map(d => ({
     ...d,
     label: shortDate(d.date),
+    impressionsK: (d.impressions ?? 0) / 1000,
   }))
+
+  function DailyPerformanceTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+    if (!active || !payload?.length) return null
+    const row = payload[0]?.payload
+    if (!row) return null
+    const cpa = row.conversions > 0 ? row.cost / row.conversions : null
+    return (
+      <div style={{ background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}>
+        <p style={{ fontWeight: 700, marginBottom: 6 }}>{row.label}</p>
+        <p style={{ fontSize: 12, margin: '2px 0' }}>{t('campaigns.stat.clicks')}: {fmt(row.clicks, 0)}</p>
+        <p style={{ fontSize: 12, margin: '2px 0' }}>{t('campaigns.stat.conversions')}: {fmt(row.conversions, 0)}</p>
+        <p style={{ fontSize: 12, margin: '2px 0' }}>{t('campaigns.stat.cost')}: {fmtEur(row.cost)}</p>
+        <p style={{ fontSize: 12, margin: '2px 0' }}>{t('campaigns.stat.impressions')}: {fmt(row.impressions ?? 0, 0)}</p>
+        <p style={{ fontSize: 12, margin: '2px 0' }}>{t('campaigns.stat.cpa')}: {cpa != null ? fmtEur(cpa) : '—'}</p>
+      </div>
+    )
+  }
 
   const branded = brandUplift?.branded
   const brandTrend = (brandUplift?.trend ?? []).map((d: any) => ({
@@ -244,38 +262,25 @@ export default function CampaignsPage() {
                   </div>
                 )}
 
-                {/* Daily charts */}
+                {/* Daily performance — single chart */}
                 {dailyChart.length > 0 && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <div className="stat-card">
-                      <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.chart.clicksConversions')}</p>
-                      <p className="text-muted-foreground text-sm mb-4"><DateRangeLabel start={startDate} end={endDate} /></p>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <ComposedChart data={dailyChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                          <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                          <YAxis yAxisId="left" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                          <YAxis yAxisId="right" orientation="right" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                          <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
-                          <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
-                          <Bar yAxisId="left" dataKey="clicks" name={t('campaigns.stat.clicks')} fill="#FF4D00" radius={[4, 4, 0, 0]} />
-                          <Line yAxisId="right" type="monotone" dataKey="conversions" name={t('campaigns.stat.conversions')} stroke="#10B981" strokeWidth={2} dot={false} />
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="stat-card">
-                      <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.chart.cpaTrend')}</p>
-                      <p className="text-muted-foreground text-sm mb-4"><DateRangeLabel start={startDate} end={endDate} /></p>
-                      <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={dailyChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                          <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                          <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${fmt(v, 0)}`} />
-                          <Tooltip {...tooltipStyle} formatter={(v: number) => [fmtEur(v), t('campaigns.stat.cpa')]} cursor={{ fill: chart.cursorFill }} />
-                          <Line type="monotone" dataKey="cpa" stroke="#FF4D00" strokeWidth={2} dot={false} fill="rgba(255,77,0,0.07)" />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.chart.dailyPerformance')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('campaigns.chart.dailyPerformanceDesc')} · <DateRangeLabel start={startDate} end={endDate} /></p>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <ComposedChart data={dailyChart} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                        <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                        <YAxis yAxisId="volume" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <YAxis yAxisId="cost" orientation="right" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${fmt(v, 0)}`} />
+                        <Tooltip content={<DailyPerformanceTooltip />} cursor={{ fill: chart.cursorFill }} />
+                        <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
+                        <Bar yAxisId="volume" dataKey="clicks" name={t('campaigns.stat.clicks')} fill="#FF4D00" radius={[3, 3, 0, 0]} barSize={8} />
+                        <Bar yAxisId="volume" dataKey="conversions" name={t('campaigns.stat.conversions')} fill="#10B981" radius={[3, 3, 0, 0]} barSize={8} />
+                        <Line yAxisId="cost" type="monotone" dataKey="cost" name={t('campaigns.stat.cost')} stroke="#F59E0B" strokeWidth={2} dot={false} />
+                        <Line yAxisId="volume" type="monotone" dataKey="impressionsK" name={t('campaigns.chart.impressionsK')} stroke="#8B5CF6" strokeWidth={2} dot={false} strokeDasharray="4 4" />
+                      </ComposedChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
 

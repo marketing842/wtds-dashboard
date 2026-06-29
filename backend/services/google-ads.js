@@ -148,7 +148,8 @@ export async function getGoogleAdsDailySeries(customerId, start, end, creds) {
       segments.date,
       metrics.clicks,
       metrics.conversions,
-      metrics.cost_micros
+      metrics.cost_micros,
+      metrics.impressions
     FROM campaign
     WHERE segments.date BETWEEN '${start}' AND '${end}'
       AND campaign.status != 'REMOVED'
@@ -159,10 +160,11 @@ export async function getGoogleAdsDailySeries(customerId, start, end, creds) {
   for (const row of rows) {
     const date = row.segments?.date;
     if (!date) continue;
-    const cur = byDate.get(date) ?? { date, clicks: 0, conversions: 0, cost: 0 };
+    const cur = byDate.get(date) ?? { date, clicks: 0, conversions: 0, cost: 0, impressions: 0 };
     cur.clicks      += Number(row.metrics.clicks ?? 0);
     cur.conversions += Number(row.metrics.conversions ?? 0);
     cur.cost        += Number(row.metrics.costMicros ?? row.metrics.cost_micros ?? 0) / 1_000_000;
+    cur.impressions += Number(row.metrics.impressions ?? 0);
     byDate.set(date, cur);
   }
 

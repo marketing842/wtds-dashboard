@@ -84,6 +84,7 @@ export default function OverviewPage() {
   const [gsc, setGsc] = useState<any>(null)
   const [gAdsDaily, setGAdsDaily] = useState<any[]>([])
   const [metaDaily, setMetaDaily] = useState<any[]>([])
+  const [overviewExt, setOverviewExt] = useState<any>(null)
   // Per-channel loading flags instead of one global spinner
   const [loadingChannels, setLoadingChannels] = useState({ gAds: true, meta: true, klaviyo: true, gsc: true })
   const [errors, setErrors] = useState<ChannelErrors>({})
@@ -93,7 +94,7 @@ export default function OverviewPage() {
       // Reset state & show loading per channel immediately
       setGAds(null); setGAdsPrev(null); setMeta(null); setMetaPrev(null)
       setKlaviyo(null); setGsc(null)
-      setGAdsDaily([]); setMetaDaily([])
+      setGAdsDaily([]); setMetaDaily([]); setOverviewExt(null)
       setErrors({})
       setLoadingChannels({ gAds: true, meta: true, klaviyo: true, gsc: true })
 
@@ -138,6 +139,9 @@ export default function OverviewPage() {
 
       safeFetch(`/api/meta/daily?start=${startDate}&end=${endDate}`)
         .then(d => setMetaDaily(d)).catch(() => {})
+
+      safeFetch(`/api/overview/extended?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`)
+        .then(d => setOverviewExt(d)).catch(() => {})
     }, 600)
     return () => clearTimeout(t)
   }, [startDate, endDate])
@@ -190,6 +194,21 @@ export default function OverviewPage() {
     .sort((a, b) => a.date.localeCompare(b.date))
 
   const momLeads = pctChg(totalLeads, prevTotalLeads)
+
+  const monthlyLeadsChart = (overviewExt?.monthly ?? []).map((m: any) => ({
+    ...m,
+    label: m.label,
+  }))
+
+  const momChartData = (overviewExt?.mom ?? [])
+    .filter((c: any) => c.growth_pct != null)
+    .map((c: any) => ({
+      channel: tr(CHANNEL_LABEL_KEYS[c.id] ?? c.id),
+      growth: Math.round(c.growth_pct * 10) / 10,
+      fill: c.growth_pct >= 0 ? '#10B981' : '#EF4444',
+    }))
+
+  const pipeline = overviewExt?.pipeline
 
   const insights: Array<{ type: 'good' | 'warn'; title: string; detail: string }> = []
 
@@ -414,12 +433,12 @@ export default function OverviewPage() {
                       </div>
                     </div>
 
-                    {/* Pipeline + MoM */}
+                    {/* Pipeline value + funnel stats */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                       {[
-                        { label: tr('dashboard.pipeline.impressions'), value: totalImpressions },
+                        { label: tr('dashboard.pipeline.estimatedValue'), value: pipeline?.estimated_value ?? 0, isEur: true },
+                        { label: tr('dashboard.pipeline.leads'), value: pipeline?.total_leads ?? totalLeads },
                         { label: tr('dashboard.pipeline.clicks'), value: (gAds?.clicks ?? 0) + (meta?.clicks ?? 0) },
-                        { label: tr('dashboard.pipeline.leads'), value: totalLeads },
                         { label: tr('dashboard.pipeline.momLeads'), value: momLeads, isPct: true },
                       ].map(item => (
                         <div key={item.label} className="stat-card py-4">
@@ -428,12 +447,69 @@ export default function OverviewPage() {
                             <p className={`text-xl font-bold ${momLeads != null && momLeads >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
                               {momLeads != null ? `${momLeads >= 0 ? '+' : ''}${fmt(momLeads)}%` : '—'}
                             </p>
+                          ) : 'isEur' in item && item.isEur ? (
+                            <>
+                              <p className="text-xl font-bold text-foreground">{fmtEur(item.value as number)}</p>
+                              {pipeline?.deal_value && (
+                                <p className="text-xs text-muted-foreground mt-1">{tr('dashboard.pipeline.dealValueNote').replace('{value}', fmt(pipeline.deal_value, 0))}</p>
+                              )}
+                            </>
                           ) : (
                             <p className="text-xl font-bold text-foreground">{fmt(item.value as number, 0)}</p>
                           )}
                         </div>
                       ))}
                     </div>
+
+                    {/* 6-month leads trend */}
+                    {monthlyLeadsChart.length > 0 && (
+                      <div className="stat-card mb-8">
+                        <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.monthlyLeads')}</p>
+                        <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.chart.monthlyLeadsDesc')}</p>
+                        <ResponsiveContainer width="100%" height={240}>
+                          <BarChart data={monthlyLeadsChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
+                            <XAxis dataKey="label" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                            <Tooltip
+                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                              labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                              itemStyle={{ color: tooltipText, fontSize: 12 }}
+                              formatter={(v: number, name: string) => [fmt(v, 0), name === 'gAds' ? tr('dashboard.channel.gAds') : name === 'meta' ? tr('dashboard.channel.meta') : tr('dashboard.stat.totalLeads')]}
+                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 12, color: chartTick }} />
+                            <Bar dataKey="gAds" name={tr('dashboard.channel.gAds')} stackId="leads" fill="#FF4D00" radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="meta" name={tr('dashboard.channel.meta')} stackId="leads" fill="#4F7EFF" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+
+                    {/* MoM by channel */}
+                    {momChartData.length > 0 && (
+                      <div className="stat-card mb-8">
+                        <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.momByChannel')}</p>
+                        <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.chart.momByChannelDesc')}</p>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={momChartData} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} horizontal={false} />
+                            <XAxis type="number" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${fmt(v)}%`} />
+                            <YAxis type="category" dataKey="channel" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
+                            <Tooltip
+                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                              formatter={(v: number) => [`${v >= 0 ? '+' : ''}${fmt(v)}%`, tr('dashboard.pipeline.momLeads')]}
+                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                            />
+                            <Bar dataKey="growth" radius={[0, 4, 4, 0]}>
+                              {momChartData.map((entry, index) => (
+                                <Cell key={index} fill={entry.fill} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
 
                     {/* Daily leads trend */}
                     {dailyLeadsChart.length > 0 && (

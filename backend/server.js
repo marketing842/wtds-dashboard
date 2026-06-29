@@ -26,7 +26,10 @@ import {
   getMetaAdCreatives,
   getMetaDailyInsights,
   getMetaAdCreativesChart,
+  getMetaAdCounts,
+  getMetaCampaignTree,
 } from './services/meta.js';
+import { getOverviewExtended } from './services/overview.js';
 import {
   getSearchConsoleSummary,
   getTopQueries,
@@ -415,6 +418,64 @@ app.get('/api/meta/creatives-chart', async (req, res) => {
     if (fb?.code === 3018) return res.json([]);
     const out = describeApiError(err, 'Meta');
     console.error('[meta/creatives-chart]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/meta/ads-count', async (req, res) => {
+  try {
+    const { start, end, compare_start, compare_end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.meta) return res.status(422).json({ error: 'Meta credentials not configured for this client' });
+    const data = await cached(
+      `mac_${req.client.id}_${start}_${end}_${compare_start ?? ''}_${compare_end ?? ''}`,
+      () => getMetaAdCounts(start, end, compare_start, compare_end, creds.meta),
+      5 * 60 * 1000,
+    );
+    res.json(data);
+  } catch (err) {
+    const fb = err.response?.data?.error;
+    if (fb?.code === 3018) return res.json({ current: 0, previous: null });
+    const out = describeApiError(err, 'Meta');
+    console.error('[meta/ads-count]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/meta/campaign-tree', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.meta) return res.status(422).json({ error: 'Meta credentials not configured for this client' });
+    const data = await cached(`mct_${req.client.id}_${start}_${end}`, () => getMetaCampaignTree(start, end, creds.meta), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const fb = err.response?.data?.error;
+    if (fb?.code === 3018) return res.json([]);
+    const out = describeApiError(err, 'Meta');
+    console.error('[meta/campaign-tree]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+// ── Overview extended ────────────────────────────────────────
+
+app.get('/api/overview/extended', async (req, res) => {
+  try {
+    const { start, end, compare_start, compare_end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    const data = await cached(
+      `ovx_${req.client.id}_${start}_${end}_${compare_start ?? ''}_${compare_end ?? ''}`,
+      () => getOverviewExtended({ ...creds, clientId: req.client.id }, start, end, compare_start, compare_end),
+      5 * 60 * 1000,
+    );
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'Overview');
+    console.error('[overview/extended]', out.detail);
     res.status(500).json(out);
   }
 });

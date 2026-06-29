@@ -202,3 +202,78 @@ export async function getMetaCampaigns(start, end, creds) {
     return { id: c.id, name: c.name, status: c.effective_status, ...mapInsights(ins) };
   });
 }
+
+async function countActiveAdsInRange(start, end, creds) {
+  let count = 0;
+  let url = `${BASE}/${creds.ad_account_id}/ads`;
+  let params = {
+    access_token: creds.access_token,
+    fields: `id,insights.time_range({"since":"${start}","until":"${end}"}){impressions,spend}`,
+    limit: 500,
+  };
+
+  while (url) {
+    const res = await axios.get(url, { params });
+    for (const ad of res.data.data ?? []) {
+      const ins = ad.insights?.data?.[0];
+      const imp = parseInt2(ins?.impressions);
+      const spend = parseNum(ins?.spend);
+      if (imp > 0 || spend > 0) count++;
+    }
+    const next = res.data.paging?.next;
+    if (!next) break;
+    url = next;
+    params = {};
+  }
+  return count;
+}
+
+export async function getMetaAdCounts(start, end, compareStart, compareEnd, creds) {
+  const current = await countActiveAdsInRange(start, end, creds);
+  const previous = compareStart && compareEnd
+    ? await countActiveAdsInRange(compareStart, compareEnd, creds)
+    : null;
+  return { current, previous };
+}
+
+export async function getMetaCampaignTree(start, end, creds) {
+  const timeRange = JSON.stringify({ since: start, until: end });
+  const insightFields = 'impressions,clicks,spend,reach,cpc,ctr,cpm,frequency,unique_clicks,unique_ctr,actions,action_values';
+
+  const [campRes, adsetRes] = await Promise.all([
+    axios.get(`${BASE}/${creds.ad_account_id}/campaigns`, {
+      params: {
+        access_token: creds.access_token,
+        fields: `id,name,effective_status,insights.time_range(${timeRange}){${insightFields}}`,
+        limit: 50,
+      },
+    }),
+    axios.get(`${BASE}/${creds.ad_account_id}/adsets`, {
+      params: {
+        access_token: creds.access_token,
+        fields: `id,name,effective_status,campaign{id,name},insights.time_range(${timeRange}){${insightFields}}`,
+        limit: 100,
+      },
+    }),
+  ]);
+
+  const campaigns = (campRes.data.data ?? []).map(c => {
+    const ins = c.insights?.data?.[0] ?? {};
+    return { id: c.id, name: c.name, status: c.effective_status, ...mapInsights(ins) };
+  });
+
+  const adsetsByCampaign = new Map();
+  for (const a of adsetRes.data.data ?? []) {
+    const cid = a.campaign?.id;
+    if (!cid) continue;
+    const ins = a.insights?.data?.[0] ?? {};
+    const row = { id: a.id, name: a.name, status: a.effective_status, ...mapInsights(ins) };
+    if (!adsetsByCampaign.has(cid)) adsetsByCampaign.set(cid, []);
+    adsetsByCampaign.get(cid).push(row);
+  }
+
+  return campaigns
+    .map(c => ({ ...c, adsets: adsetsByCampaign.get(c.id) ?? [] }))
+    .filter(c => c.impressions > 0 || c.spend > 0 || c.adsets.length > 0)
+    .sort((a, b) => b.spend - a.spend);
+}

@@ -50,6 +50,7 @@ export default function MetaPage() {
   const [creatives, setCreatives] = useState<any[]>([])
   const [daily, setDaily] = useState<any[]>([])
   const [creativesChart, setCreativesChart] = useState<any[]>([])
+  const [adsCount, setAdsCount] = useState<{ current: number; previous: number | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -59,32 +60,35 @@ export default function MetaPage() {
       setError(null)
       try {
         const { ps, pe } = getPrevRange(startDate, endDate)
-        const [sumRes, sumPrevRes, campRes, creativeRes, dailyRes, chartRes] = await Promise.all([
+        const [sumRes, sumPrevRes, campRes, creativeRes, dailyRes, chartRes, adsCountRes] = await Promise.all([
           apiFetch(`/api/meta/summary?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/summary?start=${ps}&end=${pe}`),
-          apiFetch(`/api/meta/campaigns?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/meta/campaign-tree?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/creatives?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/daily?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/creatives-chart?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/meta/ads-count?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`),
         ])
         if (!sumRes.ok) {
           const body = await sumRes.json().catch(() => ({}))
           const code = body?.code ? ` (code ${body.code})` : ''
           throw new Error((body?.error ?? `HTTP ${sumRes.status}`) + code)
         }
-        const [s, sp, c, cr, d, cc] = await Promise.all([
+        const [s, sp, c, cr, d, cc, ac] = await Promise.all([
           sumRes.json(),
           sumPrevRes.ok ? sumPrevRes.json() : null,
           campRes.ok ? campRes.json() : [],
           creativeRes.ok ? creativeRes.json() : [],
           dailyRes.ok ? dailyRes.json() : [],
           chartRes.ok ? chartRes.json() : [],
+          adsCountRes.ok ? adsCountRes.json() : null,
         ])
         setSummary({ cur: s, prev: sp })
         setCampaigns(c)
         setCreatives(cr)
         setDaily(d)
         setCreativesChart(cc.filter((x: any) => x.is_video && x.thumbstop_rate != null))
+        setAdsCount(ac)
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -196,6 +200,23 @@ export default function MetaPage() {
                     : <MetricKpi label={t('meta.stat.revenue')} value={cur.purchase_value > 0 ? fmtEur(cur.purchase_value) : '—'} tooltipKey="tooltip.roas" />}
                   <MetricKpi label={t('meta.stat.reach')} value={cur.reach >= 1000 ? `${fmt(cur.reach / 1000)}K` : fmt(cur.reach, 0)} tooltipKey="tooltip.reach" />
                 </div>
+
+                {adsCount && (
+                  <div className="stat-card mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <p className="text-foreground font-bold text-lg">{t('meta.stat.activeCreatives')}</p>
+                      <p className="text-muted-foreground text-sm mt-1">{t('meta.stat.activeCreativesDesc')}</p>
+                    </div>
+                    <div className="flex items-baseline gap-3">
+                      <p className="text-3xl font-bold text-accent">{adsCount.current}</p>
+                      {adsCount.previous != null && (
+                        <p className="text-sm text-muted-foreground">
+                          {t('meta.stat.vsLastPeriod')}: <span className={adsCount.current >= adsCount.previous ? 'text-emerald-500 font-semibold' : 'text-red-400 font-semibold'}>{adsCount.previous}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Daily trend + thumbstop chart */}
                 {(dailyChart.length > 0 || thumbChart.length > 0) && (
@@ -352,7 +373,7 @@ export default function MetaPage() {
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mb-4">
                             {[
                               { label: t('meta.stat.impressions'), value: c.impressions >= 1000 ? `${fmt(c.impressions / 1000)}K` : String(c.impressions) },
                               { label: t('meta.stat.clicks'), value: fmt(c.clicks, 0) },
@@ -369,6 +390,35 @@ export default function MetaPage() {
                               </div>
                             ))}
                           </div>
+
+                          {(c.adsets ?? []).length > 0 && (
+                            <div className="border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">{t('meta.campaignTree.adsets')}</p>
+                              <div className="space-y-3">
+                                {c.adsets.map((a: any) => (
+                                  <div key={a.id} className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                                    <div className="flex items-start justify-between mb-3">
+                                      <p className="text-sm font-medium text-foreground">{a.name}</p>
+                                      <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                                        a.status === 'ACTIVE'
+                                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/25'
+                                          : 'bg-slate-500/15 text-muted-foreground border-slate-500/25'
+                                      }`}>
+                                        {a.status === 'ACTIVE' ? t('common.active') : t('common.inactive')}
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 text-xs">
+                                      <div><span className="text-muted-foreground">{t('meta.stat.spendShort')}</span><p className="font-semibold">{fmtEur(a.spend)}</p></div>
+                                      <div><span className="text-muted-foreground">{t('meta.stat.clicks')}</span><p className="font-semibold">{fmt(a.clicks, 0)}</p></div>
+                                      <div><span className="text-muted-foreground">{t('meta.stat.ctr')}</span><p className="font-semibold">{fmt(a.ctr)}%</p></div>
+                                      <div><span className="text-muted-foreground">{a.leads > 0 ? t('meta.stat.leads') : t('meta.stat.purchases')}</span><p className="font-semibold">{a.leads > 0 ? a.leads : a.purchases}</p></div>
+                                      <div><span className="text-muted-foreground">{t('meta.stat.impressions')}</span><p className="font-semibold">{a.impressions >= 1000 ? `${fmt(a.impressions / 1000)}K` : a.impressions}</p></div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
