@@ -92,10 +92,29 @@ async function fetchAccountInsight(igId, metric, sinceUnix, untilUnix, creds) {
         access_token: creds.access_token,
       },
     });
-    return parseInsightRow(res.data.data?.[0]);
+    const row = res.data.data?.[0];
+    if (!row) return { sum: 0, daily: [], available: false };
+    const parsed = parseInsightRow(row);
+    return { ...parsed, available: true };
   } catch (err) {
     console.error(`[instagram/insights] ${metric} failed:`, err.response?.data?.error?.message ?? err.message);
-    return { sum: 0, daily: [] };
+    return { sum: 0, daily: [], available: false };
+  }
+}
+
+async function probePostMetrics(igId, creds) {
+  try {
+    const res = await axios.get(`${BASE}/${igId}/media`, {
+      params: { fields: 'id,shares_count,saved_count', limit: 1, access_token: creds.access_token },
+    });
+    const sample = res.data.data?.[0];
+    return {
+      shares: sample != null && Object.prototype.hasOwnProperty.call(sample, 'shares_count'),
+      saved: sample != null && Object.prototype.hasOwnProperty.call(sample, 'saved_count'),
+    };
+  } catch (err) {
+    console.error('[instagram/probe-metrics]', err.response?.data?.error?.message ?? err.message);
+    return { shares: false, saved: false };
   }
 }
 
@@ -120,17 +139,30 @@ export async function getInstagramSummary(start, end, creds) {
     name: accountRes.data.name ?? '',
     followers: accountRes.data.followers_count ?? 0,
     media_count: accountRes.data.media_count ?? 0,
-    reach: reachData.sum,
-    new_followers: followersData.sum,
-    profile_views: profileViewsData.sum,
+    reach: reachData.available ? reachData.sum : null,
+    new_followers: followersData.available ? followersData.sum : null,
+    profile_views: profileViewsData.available ? profileViewsData.sum : null,
+    metrics_available: {
+      reach: reachData.available,
+      profile_views: profileViewsData.available,
+      new_followers: followersData.available,
+    },
   };
 }
 
 export async function getInstagramPosts(start, end, creds) {
   const igId = await getIgUserId(creds);
+  const postMetrics = await probePostMetrics(igId, creds);
+
+  const mediaFields = [
+    'id', 'caption', 'media_type', 'timestamp', 'like_count', 'comments_count',
+    ...(postMetrics.shares ? ['shares_count'] : []),
+    ...(postMetrics.saved ? ['saved_count'] : []),
+  ].join(',');
+
   const res = await axios.get(`${BASE}/${igId}/media`, {
     params: {
-      fields: 'id,caption,media_type,timestamp,like_count,comments_count,shares_count,saved_count',
+      fields: mediaFields,
       limit: 50,
       access_token: creds.access_token,
     }
@@ -149,9 +181,10 @@ export async function getInstagramPosts(start, end, creds) {
   // Enrich each post with per-post insights (reach) + native share/save counts from media object
   const postsWithInsights = await Promise.all(
     postsInPeriod.map(async (post) => {
-      let shares = post.shares_count ?? 0;
-      let saved = post.saved_count ?? 0;
-      let reach = 0;
+      const shares = postMetrics.shares ? (post.shares_count ?? 0) : null;
+      const saved = postMetrics.saved ? (post.saved_count ?? 0) : null;
+      let reach = null;
+      let reachAvailable = false;
       try {
         const insRes = await axios.get(`${BASE}/${post.id}/insights`, {
           params: {
@@ -160,15 +193,18 @@ export async function getInstagramPosts(start, end, creds) {
           }
         });
         const row = insRes.data.data?.[0];
-        reach = row?.values?.[0]?.value ?? row?.total_value?.value ?? row?.value ?? 0;
+        if (row) {
+          reach = row?.values?.[0]?.value ?? row?.total_value?.value ?? row?.value ?? 0;
+          reachAvailable = true;
+        }
       } catch (err) {
         console.error(`[instagram/post-insights] ${post.id}:`, err.response?.data?.error?.message ?? err.message);
       }
 
       const likes = post.like_count ?? 0;
       const comments = post.comments_count ?? 0;
-      const engagement = likes + comments + shares + saved;
-      const engagement_rate = reach > 0 ? (engagement / reach) * 100 : 0;
+      const engagement = likes + comments + (shares ?? 0) + (saved ?? 0);
+      const engagement_rate = reachAvailable && reach > 0 ? (engagement / reach) * 100 : null;
 
       return {
         id: post.id,
@@ -182,12 +218,20 @@ export async function getInstagramPosts(start, end, creds) {
         shares,
         saved,
         reach,
+        reach_available: reachAvailable,
         engagement_rate,
       };
     })
   );
 
-  return postsWithInsights;
+  return {
+    posts: postsWithInsights,
+    metrics_available: {
+      shares: postMetrics.shares,
+      saved: postMetrics.saved,
+      post_reach: postsWithInsights.some(p => p.reach_available),
+    },
+  };
 }
 
 async function getPrimaryFacebookPage(creds) {
@@ -276,21 +320,34 @@ export async function getInstagramDailyInsights(start, end, creds) {
   ]);
 
   const byDate = new Map();
-  for (const row of reachData.daily) {
-    byDate.set(row.date, { date: row.date, reach: row.value, profile_views: 0, new_followers: 0 });
+  if (reachData.available) {
+    for (const row of reachData.daily) {
+      byDate.set(row.date, { date: row.date, reach: row.value, profile_views: null, new_followers: null });
+    }
   }
-  for (const row of profileViewsData.daily) {
-    const cur = byDate.get(row.date) ?? { date: row.date, reach: 0, profile_views: 0, new_followers: 0 };
-    cur.profile_views = row.value;
-    byDate.set(row.date, cur);
+  if (profileViewsData.available) {
+    for (const row of profileViewsData.daily) {
+      const cur = byDate.get(row.date) ?? { date: row.date, reach: null, profile_views: null, new_followers: null };
+      cur.profile_views = row.value;
+      byDate.set(row.date, cur);
+    }
   }
-  for (const row of newFollowersData.daily) {
-    const cur = byDate.get(row.date) ?? { date: row.date, reach: 0, profile_views: 0, new_followers: 0 };
-    cur.new_followers = row.value;
-    byDate.set(row.date, cur);
+  if (newFollowersData.available) {
+    for (const row of newFollowersData.daily) {
+      const cur = byDate.get(row.date) ?? { date: row.date, reach: null, profile_views: null, new_followers: null };
+      cur.new_followers = row.value;
+      byDate.set(row.date, cur);
+    }
   }
 
-  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return {
+    daily: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    metrics_available: {
+      reach: reachData.available,
+      profile_views: profileViewsData.available,
+      new_followers: newFollowersData.available,
+    },
+  };
 }
 
 export async function getFacebookPageOrganic(start, end, creds) {

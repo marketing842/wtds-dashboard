@@ -301,8 +301,10 @@ const nl: Dict = {
   'organisch.noFacebook': 'Geen Facebook-pagina gekoppeld aan dit Meta-account.',
   'organisch.chart.reachTrend': 'Dagelijks bereik',
   'organisch.chart.reachTrendDesc': 'Bereik en profielbezoeken per dag',
+  'organisch.chart.reachTrendDescReachOnly': 'Bereik per dag',
   'organisch.chart.engagementBreakdown': 'Betrokkenheid per type',
   'organisch.chart.engagementBreakdownDesc': 'Totaal likes, reacties, shares en opgeslagen in deze periode',
+  'organisch.chart.engagementBreakdownDescBasic': 'Totaal likes en reacties in deze periode',
   'organisch.chart.postPerformance': 'Prestatie per bericht',
   'organisch.chart.postPerformanceDesc': 'Likes en reacties per bericht in deze periode',
   'organisch.section.contentSummary': 'Content overzicht',
@@ -475,6 +477,7 @@ const nl: Dict = {
   'tooltip.holdRate': 'Percentage kijkers dat minstens 30 seconden naar je video kijkt.',
   'tooltip.engagement': 'Betrokkenheidspercentage — interacties gedeeld door bereik.',
   'tooltip.shares': 'Aantal keren dat je content is gedeeld door gebruikers.',
+  'tooltip.profileViews': 'Profielbezoeken worden niet altijd gedeeld door Instagram. Als je een streepje ziet, heeft het account geen toegang tot deze metric.',
 
   // Time relative
   'time.today': 'Vandaag',
@@ -787,8 +790,10 @@ const en: Dict = {
   'organisch.noFacebook': 'No Facebook page linked to this Meta account.',
   'organisch.chart.reachTrend': 'Daily reach',
   'organisch.chart.reachTrendDesc': 'Reach and profile visits per day',
+  'organisch.chart.reachTrendDescReachOnly': 'Daily reach',
   'organisch.chart.engagementBreakdown': 'Engagement by type',
   'organisch.chart.engagementBreakdownDesc': 'Total likes, comments, shares and saves in this period',
+  'organisch.chart.engagementBreakdownDescBasic': 'Total likes and comments in this period',
   'organisch.chart.postPerformance': 'Performance per post',
   'organisch.chart.postPerformanceDesc': 'Likes and comments per post in this period',
   'organisch.section.contentSummary': 'Content summary',
@@ -961,6 +966,7 @@ const en: Dict = {
   'tooltip.holdRate': 'Percentage of viewers who watch at least 30 seconds of your video.',
   'tooltip.engagement': 'Engagement rate — interactions divided by reach.',
   'tooltip.shares': 'Number of times your content was shared by users.',
+  'tooltip.profileViews': 'Profile visits are not always shared by Instagram. If you see a dash, this account does not have access to this metric.',
 
   // Time relative
   'time.today': 'Today',

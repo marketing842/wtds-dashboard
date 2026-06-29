@@ -4,14 +4,14 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
-import { MetricKpi } from '@/components/MetricLabel'
+import { MetricLabel } from '@/components/MetricLabel'
 import { useDateRange } from '@/lib/date-range-context'
 import {
   Users, Eye, Share2, Bookmark, TrendingUp, Camera, Loader2, Heart, MessageCircle,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-  Line, Cell, ComposedChart, CartesianGrid,
+  Line, ComposedChart, CartesianGrid,
 } from 'recharts'
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
@@ -45,6 +45,53 @@ const RANK_COLOR = ['text-yellow-400', 'text-muted-foreground', 'text-orange-400
 
 function postScore(p: any) {
   return (p.reach || 0) + (p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saved ?? 0)
+}
+
+function EngagementMeter({
+  label,
+  value,
+  max,
+  color,
+  formatted,
+}: {
+  label: string
+  value: number
+  max: number
+  color: string
+  formatted: string
+}) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <span className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+          <span className="truncate">{label}</span>
+        </span>
+        <span className="text-sm font-bold text-foreground tabular-nums flex-shrink-0">{formatted}</span>
+      </div>
+      <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: value > 0 ? `${Math.max(pct, 3)}%` : '0%',
+            background: color,
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function SummaryTile({ label, value, tooltipKey }: { label: string; value: ReactNode; tooltipKey?: string }) {
+  return (
+    <div className="rounded-xl p-3" style={{ background: 'var(--border)' }}>
+      <p className="text-xs text-muted-foreground">
+        <MetricLabel label={label} tooltipKey={tooltipKey} />
+      </p>
+      <p className="text-lg font-bold mt-1 tabular-nums">{value}</p>
+    </div>
+  )
 }
 
 function ChartSkeleton({ height = 220 }: { height?: number }) {
@@ -83,6 +130,8 @@ export default function MetaOrganischPage() {
   const [facebook, setFacebook] = useState<any>(null)
   const [posts, setPosts] = useState<any[]>([])
   const [daily, setDaily] = useState<any[]>([])
+  const [postMetricsAvailable, setPostMetricsAvailable] = useState<Record<string, boolean>>({})
+  const [dailyMetricsAvailable, setDailyMetricsAvailable] = useState<Record<string, boolean>>({})
   const [loadingSummary, setLoadingSummary] = useState(true)
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [loadingExtended, setLoadingExtended] = useState(true)
@@ -96,6 +145,8 @@ export default function MetaOrganischPage() {
       setFacebook(null)
       setPosts([])
       setDaily([])
+      setPostMetricsAvailable({})
+      setDailyMetricsAvailable({})
       setError(null)
       setLoadingSummary(true)
       setLoadingPosts(true)
@@ -115,8 +166,22 @@ export default function MetaOrganischPage() {
         .finally(() => { if (active) setLoadingSummary(false) })
 
       safeFetch(`/api/instagram/posts?start=${startDate}&end=${endDate}`)
-        .then(d => { if (active) setPosts(Array.isArray(d) ? d : []) })
-        .catch(() => { if (active) setPosts([]) })
+        .then(d => {
+          if (!active) return
+          if (Array.isArray(d)) {
+            setPosts(d)
+            setPostMetricsAvailable({ shares: true, saved: true, post_reach: true })
+          } else {
+            setPosts(Array.isArray(d?.posts) ? d.posts : [])
+            setPostMetricsAvailable(d?.metrics_available ?? {})
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setPosts([])
+            setPostMetricsAvailable({})
+          }
+        })
         .finally(() => { if (active) setLoadingPosts(false) })
 
       safeFetch(`/api/instagram/extended?start=${startDate}&end=${endDate}`)
@@ -129,8 +194,22 @@ export default function MetaOrganischPage() {
         .finally(() => { if (active) setLoadingExtended(false) })
 
       safeFetch(`/api/instagram/daily?start=${startDate}&end=${endDate}`)
-        .then(d => { if (active) setDaily(Array.isArray(d) ? d : []) })
-        .catch(() => { if (active) setDaily([]) })
+        .then(d => {
+          if (!active) return
+          if (Array.isArray(d)) {
+            setDaily(d)
+            setDailyMetricsAvailable({ reach: true, profile_views: true, new_followers: true })
+          } else {
+            setDaily(Array.isArray(d?.daily) ? d.daily : [])
+            setDailyMetricsAvailable(d?.metrics_available ?? {})
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setDaily([])
+            setDailyMetricsAvailable({})
+          }
+        })
         .finally(() => { if (active) setLoadingDaily(false) })
     }, 600)
 
@@ -139,18 +218,31 @@ export default function MetaOrganischPage() {
 
   const topPosts = [...posts].sort((a, b) => postScore(b) - postScore(a)).slice(0, 3)
 
+  const metricsAvailable = {
+    reach: summary?.metrics_available?.reach ?? dailyMetricsAvailable.reach ?? true,
+    profile_views: summary?.metrics_available?.profile_views ?? dailyMetricsAvailable.profile_views ?? false,
+    new_followers: summary?.metrics_available?.new_followers ?? dailyMetricsAvailable.new_followers ?? false,
+    shares: postMetricsAvailable.shares ?? false,
+    saved: postMetricsAvailable.saved ?? false,
+    post_reach: postMetricsAvailable.post_reach ?? false,
+  }
+
   const totalLikes = posts.reduce((s, p) => s + (p.likes ?? 0), 0)
   const totalComments = posts.reduce((s, p) => s + (p.comments ?? 0), 0)
-  const totalShares = posts.reduce((s, p) => s + (p.shares ?? 0), 0)
-  const totalSaved = posts.reduce((s, p) => s + (p.saved ?? 0), 0)
-  const totalPostReach = posts.reduce((s, p) => s + (p.reach ?? 0), 0)
+  const totalShares = metricsAvailable.shares ? posts.reduce((s, p) => s + (p.shares ?? 0), 0) : 0
+  const totalSaved = metricsAvailable.saved ? posts.reduce((s, p) => s + (p.saved ?? 0), 0) : 0
+  const totalPostReach = metricsAvailable.post_reach
+    ? posts.reduce((s, p) => s + (p.reach ?? 0), 0)
+    : 0
   const summaryReach = summary?.reach
   const reach = summaryReach != null && summaryReach > 0
     ? summaryReach
     : totalPostReach > 0
       ? totalPostReach
       : Math.max(0, summaryReach ?? 0)
-  const totalEngagement = totalLikes + totalComments + totalShares + totalSaved
+  const totalEngagement = totalLikes + totalComments
+    + (metricsAvailable.shares ? totalShares : 0)
+    + (metricsAvailable.saved ? totalSaved : 0)
   const engagementRate = reach > 0 ? (totalEngagement / reach) * 100 : 0
   const avgLikes = posts.length > 0 ? totalLikes / posts.length : 0
 
@@ -170,18 +262,19 @@ export default function MetaOrganischPage() {
     label: shortDate(d.date),
   }))
   const chartKey = `${startDate}_${endDate}`
-  const profileViewsTotal = Math.max(
-    summary?.profile_views ?? 0,
-    daily.reduce((s, d) => s + (d.profile_views ?? 0), 0),
-  )
-  const hasProfileViews = profileViewsTotal > 0 || daily.some(d => (d.profile_views ?? 0) > 0)
+  const profileViewsTotal = metricsAvailable.profile_views
+    ? Math.max(summary?.profile_views ?? 0, daily.reduce((s, d) => s + (d.profile_views ?? 0), 0))
+    : 0
 
-  const engagementBreakdown = [
-    { name: t('organisch.stat.likes'), value: totalLikes, fill: ENGAGEMENT_COLORS[0] },
-    { name: t('organisch.stat.comments'), value: totalComments, fill: ENGAGEMENT_COLORS[1] },
-    { name: t('organisch.stat.shares'), value: totalShares, fill: ENGAGEMENT_COLORS[2] },
-    { name: t('organisch.stat.saved'), value: totalSaved, fill: ENGAGEMENT_COLORS[3] },
+  const engagementBreakdownAll = [
+    { key: 'likes', name: t('organisch.stat.likes'), value: totalLikes, fill: ENGAGEMENT_COLORS[0], show: true },
+    { key: 'comments', name: t('organisch.stat.comments'), value: totalComments, fill: ENGAGEMENT_COLORS[1], show: true },
+    { key: 'shares', name: t('organisch.stat.shares'), value: totalShares, fill: ENGAGEMENT_COLORS[2], show: metricsAvailable.shares },
+    { key: 'saved', name: t('organisch.stat.saved'), value: totalSaved, fill: ENGAGEMENT_COLORS[3], show: metricsAvailable.saved },
   ]
+  const engagementBreakdown = engagementBreakdownAll.filter(d => d.show)
+  const engagementMax = Math.max(...engagementBreakdown.map(d => d.value), 1)
+  const showExtendedEngagement = metricsAvailable.shares || metricsAvailable.saved
 
   const postPerformanceChart = [...posts]
     .sort((a, b) => postScore(b) - postScore(a))
@@ -191,12 +284,13 @@ export default function MetaOrganischPage() {
       likes: p.likes ?? 0,
       comments: p.comments ?? 0,
     }))
+  const showPostPerformanceChart = postPerformanceChart.length >= 2
 
   const insights: Array<{ type: 'good' | 'warn'; title: string; detail: string }> = []
   if (engagementRate > 3) {
     insights.push({ type: 'good', title: t('organisch.insight.engagementGood').replace('{rate}', fmt(engagementRate, 1)), detail: t('organisch.insight.engagementGoodDetail') })
   }
-  if (summary?.new_followers > 0) {
+  if (summary?.new_followers != null && metricsAvailable.new_followers && summary.new_followers !== 0) {
     insights.push({ type: 'good', title: t('organisch.insight.followersGood').replace('{n}', fmt(summary.new_followers)), detail: t('organisch.insight.followersGoodDetail') })
   }
   const topType = contentTypeChart.sort((a, b) => b.count - a.count)[0]
@@ -263,7 +357,7 @@ export default function MetaOrganischPage() {
                       )}
                     </p>
                   </div>
-                  {!loadingSummary && summary?.new_followers !== 0 && summary?.new_followers != null && (
+                  {!loadingSummary && metricsAvailable.new_followers && summary?.new_followers != null && summary.new_followers !== 0 && (
                     <div className="text-right">
                       <p className={`text-2xl font-bold ${summary.new_followers >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
                         {summary.new_followers > 0 ? '+' : ''}
@@ -304,19 +398,6 @@ export default function MetaOrganischPage() {
                   />
                 </div>
 
-                {/* Secondary KPIs */}
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                  <MetricKpi label={t('organisch.stat.comments')} value={loadingPosts ? '—' : fmt(totalComments)} />
-                  <MetricKpi label={t('organisch.stat.shares')} value={loadingPosts ? '—' : fmt(totalShares)} tooltipKey="tooltip.shares" />
-                  <MetricKpi label={t('organisch.stat.saved')} value={loadingPosts ? '—' : fmt(totalSaved)} />
-                  <MetricKpi label={t('organisch.stat.avgLikes')} value={loadingPosts ? '—' : fmt(avgLikes, 1)} />
-                  <MetricKpi label={t('organisch.stat.profileViews')} value={loadingSummary && loadingDaily ? '—' : hasProfileViews ? fmtK(profileViewsTotal) : '—'} />
-                </div>
-
-                {!loadingSummary && !loadingDaily && !hasProfileViews && (
-                  <p className="text-xs text-muted-foreground mb-6 px-1">{t('organisch.note.profileViewsUnavailable')}</p>
-                )}
-
                 {/* Daily reach trend */}
                 {(loadingDaily || dailyChart.length > 0) && (
                   <div className="stat-card mb-8">
@@ -324,18 +405,20 @@ export default function MetaOrganischPage() {
                       <p className="text-foreground font-bold text-lg">{t('organisch.chart.reachTrend')}</p>
                       {loadingDaily && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                     </div>
-                    <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.reachTrendDesc')} · <DateRangeLabel start={startDate} end={endDate} /></p>
+                    <p className="text-muted-foreground text-sm mb-4">
+                      {(metricsAvailable.profile_views ? t('organisch.chart.reachTrendDesc') : t('organisch.chart.reachTrendDescReachOnly'))} · <DateRangeLabel start={startDate} end={endDate} />
+                    </p>
                     <ChartFrame loading={loadingDaily} height={280} chartKey={`organic-daily-${chartKey}`}>
                       <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={dailyChart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                           <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                           <YAxis yAxisId="left" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                          <YAxis yAxisId="right" orientation="right" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} hide={!hasProfileViews} />
+                          <YAxis yAxisId="right" orientation="right" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} hide={!metricsAvailable.profile_views} />
                           <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
                           <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
                           <Bar yAxisId="left" dataKey="reach" name={t('organisch.stat.reach')} fill="#EC4899" radius={[4, 4, 0, 0]} opacity={0.9} isAnimationActive={false} />
-                          {hasProfileViews && (
+                          {metricsAvailable.profile_views && (
                             <Line yAxisId="right" type="monotone" dataKey="profile_views" name={t('organisch.stat.profileViews')} stroke="#FF4D00" strokeWidth={2.5} dot={false} isAnimationActive={false} />
                           )}
                         </ComposedChart>
@@ -344,37 +427,39 @@ export default function MetaOrganischPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
-                  <div className="stat-card xl:col-span-2">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8 items-stretch">
+                  <div className="stat-card xl:col-span-2 flex flex-col">
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-foreground font-bold text-lg">{t('organisch.chart.engagementBreakdown')}</p>
                       {loadingPosts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                     </div>
-                    <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.engagementBreakdownDesc')}</p>
-                    <ChartFrame loading={loadingPosts} height={220} chartKey={`organic-eng-${chartKey}`}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={engagementBreakdown} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} horizontal={false} />
-                          <XAxis type="number" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                          <YAxis type="category" dataKey="name" tick={{ fill: chart.tick, fontSize: 12 }} axisLine={false} tickLine={false} width={88} />
-                          <Tooltip {...tooltipStyle} formatter={(v: number) => [fmt(v, 0), '']} cursor={{ fill: chart.cursorFill }} />
-                          <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={false}>
-                            {engagementBreakdown.map((entry, i) => (
-                              <Cell key={i} fill={entry.fill} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </ChartFrame>
-                    {!loadingPosts && totalShares === 0 && totalSaved === 0 && (
-                      <p className="text-xs text-muted-foreground mt-3">{t('organisch.note.sharesZero')}</p>
+                    <p className="text-muted-foreground text-sm mb-5">
+                      {showExtendedEngagement
+                        ? t('organisch.chart.engagementBreakdownDesc')
+                        : t('organisch.chart.engagementBreakdownDescBasic')}
+                    </p>
+                    {loadingPosts ? (
+                      <ChartSkeleton height={220} />
+                    ) : (
+                      <div className="space-y-5 flex-1">
+                        {engagementBreakdown.map(item => (
+                          <EngagementMeter
+                            key={item.name}
+                            label={item.name}
+                            value={item.value}
+                            max={engagementMax}
+                            color={item.fill}
+                            formatted={fmt(item.value, 0)}
+                          />
+                        ))}
+                      </div>
                     )}
                   </div>
 
-                  <div className="stat-card">
+                  <div className="stat-card flex flex-col">
                     <p className="text-foreground font-bold text-lg mb-1">{t('organisch.section.contentSummary')}</p>
                     <p className="text-muted-foreground text-sm mb-5">{t('organisch.chart.contentTypesDesc')}</p>
-                    <div className="space-y-4">
+                    <div className="flex-1 flex flex-col gap-5">
                       <div>
                         <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{t('organisch.chart.contentTypes')}</p>
                         <div className="flex flex-wrap gap-2">
@@ -392,42 +477,43 @@ export default function MetaOrganischPage() {
                           )}
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 pt-2">
-                        <div className="rounded-xl p-3" style={{ background: 'var(--border)' }}>
-                          <p className="text-xs text-muted-foreground">{t('organisch.stat.reach')}</p>
-                          <p className="text-xl font-bold mt-1">{loadingSummary ? '—' : fmtK(reach)}</p>
-                        </div>
-                        <div className="rounded-xl p-3" style={{ background: 'var(--border)' }}>
-                          <p className="text-xs text-muted-foreground">{t('organisch.stat.engagement')}</p>
-                          <p className="text-xl font-bold mt-1">{loadingPosts ? '—' : fmtPct(engagementRate)}</p>
-                        </div>
-                        <div className="rounded-xl p-3" style={{ background: 'var(--border)' }}>
-                          <p className="text-xs text-muted-foreground">{t('organisch.stat.posts')}</p>
-                          <p className="text-xl font-bold mt-1">{loadingPosts ? '—' : fmt(posts.length, 0)}</p>
-                        </div>
-                        <div className="rounded-xl p-3" style={{ background: 'var(--border)' }}>
-                          <p className="text-xs text-muted-foreground">{t('organisch.stat.avgLikes')}</p>
-                          <p className="text-xl font-bold mt-1">{loadingPosts ? '—' : fmt(avgLikes, 1)}</p>
-                        </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <SummaryTile label={t('organisch.stat.reach')} value={loadingSummary ? '—' : fmtK(reach)} />
+                        <SummaryTile label={t('organisch.stat.engagement')} value={loadingPosts ? '—' : fmtPct(engagementRate)} />
+                        <SummaryTile label={t('organisch.stat.posts')} value={loadingPosts ? '—' : fmt(posts.length, 0)} />
+                        <SummaryTile label={t('organisch.stat.avgLikes')} value={loadingPosts ? '—' : fmt(avgLikes, 1)} />
+                        <SummaryTile label={t('organisch.stat.comments')} value={loadingPosts ? '—' : fmt(totalComments, 0)} />
+                        {metricsAvailable.shares && (
+                          <SummaryTile label={t('organisch.stat.shares')} value={loadingPosts ? '—' : fmt(totalShares, 0)} tooltipKey="tooltip.shares" />
+                        )}
+                        {metricsAvailable.saved && (
+                          <SummaryTile label={t('organisch.stat.saved')} value={loadingPosts ? '—' : fmt(totalSaved, 0)} />
+                        )}
+                        {metricsAvailable.profile_views && (
+                          <SummaryTile
+                            label={t('organisch.stat.profileViews')}
+                            value={loadingSummary && loadingDaily ? '—' : fmtK(profileViewsTotal)}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {!loadingPosts && postPerformanceChart.length > 0 && (
+                {showPostPerformanceChart && (
                   <div className="stat-card mb-8">
                     <p className="text-foreground font-bold text-lg mb-1">{t('organisch.chart.postPerformance')}</p>
                     <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.postPerformanceDesc')}</p>
                     <ChartFrame loading={false} height={240} chartKey={`organic-posts-${chartKey}`}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={postPerformanceChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                        <BarChart data={postPerformanceChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} barCategoryGap="28%" barGap={4}>
                           <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                           <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={56} />
                           <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                           <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
                           <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
-                          <Bar dataKey="likes" name={t('organisch.stat.likes')} fill="#FF4D00" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                          <Bar dataKey="comments" name={t('organisch.stat.comments')} fill="#4F7EFF" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                          <Bar dataKey="likes" name={t('organisch.stat.likes')} fill="#FF4D00" radius={[4, 4, 0, 0]} maxBarSize={40} isAnimationActive={false} />
+                          <Bar dataKey="comments" name={t('organisch.stat.comments')} fill="#4F7EFF" radius={[4, 4, 0, 0]} maxBarSize={40} isAnimationActive={false} />
                         </BarChart>
                       </ResponsiveContainer>
                     </ChartFrame>
@@ -452,7 +538,7 @@ export default function MetaOrganischPage() {
                             </div>
                             <p className="text-foreground text-sm font-medium mb-3 line-clamp-3 leading-snug">{post.caption}</p>
                             <div className="grid grid-cols-2 gap-3 text-xs">
-                              {post.reach > 0 && (
+                              {metricsAvailable.post_reach && (post.reach ?? 0) > 0 && (
                                 <div>
                                   <p className="text-muted-foreground">{t('organisch.stat.reach')}</p>
                                   <p className="font-bold text-accent">{fmtK(post.reach)}</p>
@@ -569,11 +655,17 @@ export default function MetaOrganischPage() {
                             <tr className="border-b border-[var(--border)]">
                               <th className="text-left text-muted-foreground text-xs font-medium px-5 py-3">{t('common.caption')}</th>
                               <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('common.type')}</th>
-                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.reach')}</th>
+                              {metricsAvailable.post_reach && (
+                                <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.reach')}</th>
+                              )}
                               <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.likes')}</th>
                               <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.comments')}</th>
-                              <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.shares')}</th>
-                              {totalSaved > 0 && <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.saved')}</th>}
+                              {metricsAvailable.shares && (
+                                <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.shares')}</th>
+                              )}
+                              {metricsAvailable.saved && (
+                                <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.stat.saved')}</th>
+                              )}
                               <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('organisch.table.engagement')}</th>
                               <th className="text-right text-muted-foreground text-xs font-medium px-5 py-3 whitespace-nowrap">{t('organisch.table.date')}</th>
                             </tr>
@@ -589,11 +681,17 @@ export default function MetaOrganischPage() {
                                       {t(TYPE_BADGE_KEYS[typeKey] ?? TYPE_BADGE_KEYS.IMAGE)}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap">{fmtK(post.reach ?? 0)}</td>
+                                  {metricsAvailable.post_reach && (
+                                    <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap">{fmtK(post.reach ?? 0)}</td>
+                                  )}
                                   <td className="px-4 py-3 text-right text-foreground font-semibold whitespace-nowrap">{fmt(post.likes)}</td>
                                   <td className="px-4 py-3 text-right text-foreground whitespace-nowrap">{fmt(post.comments)}</td>
-                                  <td className="px-4 py-3 text-right text-foreground whitespace-nowrap">{fmt(post.shares ?? 0)}</td>
-                                  {totalSaved > 0 && <td className="px-4 py-3 text-right text-foreground whitespace-nowrap">{fmt(post.saved)}</td>}
+                                  {metricsAvailable.shares && (
+                                    <td className="px-4 py-3 text-right text-foreground whitespace-nowrap">{fmt(post.shares ?? 0)}</td>
+                                  )}
+                                  {metricsAvailable.saved && (
+                                    <td className="px-4 py-3 text-right text-foreground whitespace-nowrap">{fmt(post.saved ?? 0)}</td>
+                                  )}
                                   <td className="px-4 py-3 text-right text-accent font-semibold whitespace-nowrap">{post.engagement_rate != null ? `${fmt(post.engagement_rate, 1)}%` : '—'}</td>
                                   <td className="px-5 py-3 text-right text-muted-foreground whitespace-nowrap">{formatDate(post.timestamp)}</td>
                                 </tr>
