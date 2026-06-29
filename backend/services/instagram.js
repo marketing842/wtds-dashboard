@@ -54,6 +54,51 @@ async function getIgUserId(creds) {
   throw new Error('No Instagram Business Account found. Ensure the Instagram account is linked to the Facebook Page in Meta Business Manager.');
 }
 
+function parseInsightRow(row) {
+  if (!row) return { sum: 0, daily: [] };
+
+  if (Array.isArray(row.values) && row.values.length > 0) {
+    const daily = row.values
+      .map(v => ({
+        date: (v.end_time ?? '').slice(0, 10),
+        value: typeof v.value === 'number' ? v.value : 0,
+      }))
+      .filter(d => d.date);
+    const sum = daily.reduce((s, d) => s + d.value, 0);
+    return { sum, daily };
+  }
+
+  const total = row.total_value?.value;
+  if (typeof total === 'number') {
+    return { sum: total, daily: [] };
+  }
+
+  if (typeof row.value === 'number') {
+    return { sum: row.value, daily: [] };
+  }
+
+  return { sum: 0, daily: [] };
+}
+
+async function fetchAccountInsight(igId, metric, sinceUnix, untilUnix, creds) {
+  try {
+    const res = await axios.get(`${BASE}/${igId}/insights`, {
+      params: {
+        metric,
+        period: 'day',
+        metric_type: 'time_series',
+        since: sinceUnix,
+        until: untilUnix,
+        access_token: creds.access_token,
+      },
+    });
+    return parseInsightRow(res.data.data?.[0]);
+  } catch (err) {
+    console.error(`[instagram/insights] ${metric} failed:`, err.response?.data?.error?.message ?? err.message);
+    return { sum: 0, daily: [] };
+  }
+}
+
 export async function getInstagramSummary(start, end, creds) {
   const igId = await getIgUserId(creds);
   const sinceUnix = Math.floor(new Date(start).getTime() / 1000);
@@ -64,28 +109,10 @@ export async function getInstagramSummary(start, end, creds) {
   });
 
   // Fetch daily metric and sum over period — each metric fetched separately so one failure doesn't block others
-  async function fetchMetricSum(metric) {
-    try {
-      const res = await axios.get(`${BASE}/${igId}/insights`, {
-        params: {
-          metric,
-          period: 'day',
-          since: sinceUnix,
-          until: untilUnix,
-          access_token: creds.access_token,
-        }
-      });
-      return (res.data.data?.[0]?.values ?? []).reduce((sum, v) => sum + (v.value ?? 0), 0);
-    } catch (err) {
-      console.error(`[instagram/insights] ${metric} failed:`, err.response?.data?.error?.message ?? err.message);
-      return 0;
-    }
-  }
-
-  const [reach, new_followers, profile_views] = await Promise.all([
-    fetchMetricSum('reach'),
-    fetchMetricSum('follower_count'),
-    fetchMetricSum('profile_views'),
+  const [reachData, followersData, profileViewsData] = await Promise.all([
+    fetchAccountInsight(igId, 'reach', sinceUnix, untilUnix, creds),
+    fetchAccountInsight(igId, 'follower_count', sinceUnix, untilUnix, creds),
+    fetchAccountInsight(igId, 'profile_views', sinceUnix, untilUnix, creds),
   ]);
 
   return {
@@ -93,9 +120,9 @@ export async function getInstagramSummary(start, end, creds) {
     name: accountRes.data.name ?? '',
     followers: accountRes.data.followers_count ?? 0,
     media_count: accountRes.data.media_count ?? 0,
-    reach,
-    new_followers,
-    profile_views,
+    reach: reachData.sum,
+    new_followers: followersData.sum,
+    profile_views: profileViewsData.sum,
   };
 }
 
@@ -103,7 +130,7 @@ export async function getInstagramPosts(start, end, creds) {
   const igId = await getIgUserId(creds);
   const res = await axios.get(`${BASE}/${igId}/media`, {
     params: {
-      fields: 'id,caption,media_type,timestamp,like_count,comments_count',
+      fields: 'id,caption,media_type,timestamp,like_count,comments_count,shares_count,saved_count',
       limit: 50,
       access_token: creds.access_token,
     }
@@ -119,23 +146,21 @@ export async function getInstagramPosts(start, end, creds) {
     })
     .slice(0, 20);
 
-  // Enrich each post with per-post insights (reach, shares, saved)
+  // Enrich each post with per-post insights (reach) + native share/save counts from media object
   const postsWithInsights = await Promise.all(
     postsInPeriod.map(async (post) => {
-      let shares = 0, saved = 0, reach = 0;
+      let shares = post.shares_count ?? 0;
+      let saved = post.saved_count ?? 0;
+      let reach = 0;
       try {
         const insRes = await axios.get(`${BASE}/${post.id}/insights`, {
           params: {
-            metric: 'reach,saved,shares',
+            metric: 'reach',
             access_token: creds.access_token,
           }
         });
-        for (const m of (insRes.data.data ?? [])) {
-          const val = m.values?.[0]?.value ?? m.value ?? 0;
-          if (m.name === 'reach') reach = val;
-          else if (m.name === 'saved') saved = val;
-          else if (m.name === 'shares') shares = val;
-        }
+        const row = insRes.data.data?.[0];
+        reach = row?.values?.[0]?.value ?? row?.total_value?.value ?? row?.value ?? 0;
       } catch (err) {
         console.error(`[instagram/post-insights] ${post.id}:`, err.response?.data?.error?.message ?? err.message);
       }
@@ -244,44 +269,22 @@ export async function getInstagramDailyInsights(start, end, creds) {
   const sinceUnix = Math.floor(new Date(start).getTime() / 1000);
   const untilUnix = Math.floor(new Date(end + 'T23:59:59').getTime() / 1000);
 
-  async function fetchDaily(metric) {
-    try {
-      const res = await axios.get(`${BASE}/${igId}/insights`, {
-        params: {
-          metric,
-          period: 'day',
-          since: sinceUnix,
-          until: untilUnix,
-          access_token: creds.access_token,
-        },
-      });
-      return (res.data.data?.[0]?.values ?? []).map(v => ({
-        date: (v.end_time ?? '').slice(0, 10),
-        value: v.value ?? 0,
-      }));
-    } catch (err) {
-      console.error(`[instagram/daily] ${metric}:`, err.response?.data?.error?.message ?? err.message);
-      return [];
-    }
-  }
-
-  const [reach, profileViews, newFollowers] = await Promise.all([
-    fetchDaily('reach'),
-    fetchDaily('profile_views'),
-    fetchDaily('follower_count'),
+  const [reachData, profileViewsData, newFollowersData] = await Promise.all([
+    fetchAccountInsight(igId, 'reach', sinceUnix, untilUnix, creds),
+    fetchAccountInsight(igId, 'profile_views', sinceUnix, untilUnix, creds),
+    fetchAccountInsight(igId, 'follower_count', sinceUnix, untilUnix, creds),
   ]);
 
   const byDate = new Map();
-  for (const row of reach) {
-    if (!row.date) continue;
+  for (const row of reachData.daily) {
     byDate.set(row.date, { date: row.date, reach: row.value, profile_views: 0, new_followers: 0 });
   }
-  for (const row of profileViews) {
+  for (const row of profileViewsData.daily) {
     const cur = byDate.get(row.date) ?? { date: row.date, reach: 0, profile_views: 0, new_followers: 0 };
     cur.profile_views = row.value;
     byDate.set(row.date, cur);
   }
-  for (const row of newFollowers) {
+  for (const row of newFollowersData.daily) {
     const cur = byDate.get(row.date) ?? { date: row.date, reach: 0, profile_views: 0, new_followers: 0 };
     cur.new_followers = row.value;
     byDate.set(row.date, cur);

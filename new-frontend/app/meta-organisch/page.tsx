@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-  LineChart, Line, PieChart, Pie, Cell, ComposedChart, CartesianGrid,
+  Line, Cell, ComposedChart, CartesianGrid,
 } from 'recharts'
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
@@ -43,44 +43,6 @@ const TYPE_CHART_COLORS: Record<string, string> = {
 const ENGAGEMENT_COLORS = ['#FF4D00', '#4F7EFF', '#10B981', '#F59E0B']
 const RANK_COLOR = ['text-yellow-400', 'text-muted-foreground', 'text-orange-400']
 
-function toChartData(
-  posts: any[],
-  startDate: string,
-  endDate: string,
-  monthLabel: (d: Date, withYear?: boolean) => string,
-) {
-  const daysDiff = (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000
-  const start = new Date(startDate)
-  const groups = new Map<string, { sortKey: string; label: string; week: string; likes: number; shares: number; saved: number; comments: number }>()
-
-  for (const post of posts) {
-    const d = new Date(post.timestamp)
-    let sortKey: string
-    let label: string
-
-    if (daysDiff <= 60) {
-      const wk = Math.floor((d.getTime() - start.getTime()) / (7 * 86400000))
-      sortKey = String(wk).padStart(4, '0')
-      label = `W${wk + 1}`
-    } else if (daysDiff <= 365) {
-      sortKey = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`
-      label = monthLabel(d)
-    } else {
-      sortKey = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`
-      label = monthLabel(d, true)
-    }
-
-    if (!groups.has(sortKey)) groups.set(sortKey, { sortKey, label, week: label, likes: 0, shares: 0, saved: 0, comments: 0 })
-    const g = groups.get(sortKey)!
-    g.likes += post.likes ?? 0
-    g.shares += post.shares ?? 0
-    g.saved += post.saved ?? 0
-    g.comments += post.comments ?? 0
-  }
-
-  return [...groups.values()].sort((a, b) => a.sortKey.localeCompare(b.sortKey))
-}
-
 function postScore(p: any) {
   return (p.reach || 0) + (p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saved ?? 0)
 }
@@ -93,9 +55,28 @@ function ChartSkeleton({ height = 220 }: { height?: number }) {
   )
 }
 
+function ChartFrame({
+  loading,
+  height,
+  chartKey,
+  children,
+}: {
+  loading: boolean
+  height: number
+  chartKey: string
+  children: ReactNode
+}) {
+  if (loading) return <ChartSkeleton height={height} />
+  return (
+    <div key={chartKey} style={{ width: '100%', height }}>
+      {children}
+    </div>
+  )
+}
+
 export default function MetaOrganischPage() {
   const { startDate, endDate } = useDateRange()
-  const { t, fmt, fmtK, fmtPct, shortDate, formatDate, monthLabel } = useLanguage()
+  const { t, fmt, fmtK, fmtPct, shortDate, formatDate } = useLanguage()
   const chart = useChartColors()
 
   const [summary, setSummary] = useState<any>(null)
@@ -173,16 +154,6 @@ export default function MetaOrganischPage() {
   const engagementRate = reach > 0 ? (totalEngagement / reach) * 100 : 0
   const avgLikes = posts.length > 0 ? totalLikes / posts.length : 0
 
-  const chartData = toChartData(posts, startDate, endDate, monthLabel)
-  const chartHasData = chartData.some(w => w.likes + w.shares + w.saved + w.comments > 0)
-
-  const engagementMix = [
-    { name: t('organisch.stat.likes'), value: totalLikes, color: ENGAGEMENT_COLORS[0] },
-    { name: t('organisch.stat.comments'), value: totalComments, color: ENGAGEMENT_COLORS[1] },
-    { name: t('organisch.stat.shares'), value: totalShares, color: ENGAGEMENT_COLORS[2] },
-    { name: t('organisch.stat.saved'), value: totalSaved, color: ENGAGEMENT_COLORS[3] },
-  ].filter(d => d.value > 0)
-
   const typeCounts = posts.reduce((acc: Record<string, number>, p) => {
     const key = p.type ?? 'IMAGE'
     acc[key] = (acc[key] ?? 0) + 1
@@ -194,35 +165,32 @@ export default function MetaOrganischPage() {
     fill: TYPE_CHART_COLORS[type] ?? '#888',
   }))
 
-  const topReachChart = [...posts]
-    .filter(p => (p.reach ?? 0) > 0)
-    .sort((a, b) => (b.reach ?? 0) - (a.reach ?? 0))
-    .slice(0, 5)
-    .map(p => ({
-      name: truncateLabel(p.caption ?? '—', 18),
-      reach: p.reach ?? 0,
-    }))
-
   const dailyChart = daily.map(d => ({
     ...d,
     label: shortDate(d.date),
   }))
+  const chartKey = `${startDate}_${endDate}`
+  const profileViewsTotal = Math.max(
+    summary?.profile_views ?? 0,
+    daily.reduce((s, d) => s + (d.profile_views ?? 0), 0),
+  )
+  const hasProfileViews = profileViewsTotal > 0 || daily.some(d => (d.profile_views ?? 0) > 0)
 
-  const typeEngagement = Object.entries(
-    posts.reduce((acc: Record<string, { reach: number; engagement: number; count: number }>, p) => {
-      const key = p.type ?? 'IMAGE'
-      if (!acc[key]) acc[key] = { reach: 0, engagement: 0, count: 0 }
-      acc[key].reach += p.reach ?? 0
-      acc[key].engagement += (p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saved ?? 0)
-      acc[key].count += 1
-      return acc
-    }, {}),
-  ).map(([type, v]) => ({
-    type: t(TYPE_BADGE_KEYS[type] ?? TYPE_BADGE_KEYS.IMAGE),
-    rate: v.reach > 0 ? Math.round((v.engagement / v.reach) * 1000) / 10 : 0,
-    posts: v.count,
-    fill: TYPE_CHART_COLORS[type] ?? '#888',
-  }))
+  const engagementBreakdown = [
+    { name: t('organisch.stat.likes'), value: totalLikes, fill: ENGAGEMENT_COLORS[0] },
+    { name: t('organisch.stat.comments'), value: totalComments, fill: ENGAGEMENT_COLORS[1] },
+    { name: t('organisch.stat.shares'), value: totalShares, fill: ENGAGEMENT_COLORS[2] },
+    { name: t('organisch.stat.saved'), value: totalSaved, fill: ENGAGEMENT_COLORS[3] },
+  ]
+
+  const postPerformanceChart = [...posts]
+    .sort((a, b) => postScore(b) - postScore(a))
+    .slice(0, 6)
+    .map(p => ({
+      name: truncateLabel(p.caption ?? '—', 16),
+      likes: p.likes ?? 0,
+      comments: p.comments ?? 0,
+    }))
 
   const insights: Array<{ type: 'good' | 'warn'; title: string; detail: string }> = []
   if (engagementRate > 3) {
@@ -342,8 +310,12 @@ export default function MetaOrganischPage() {
                   <MetricKpi label={t('organisch.stat.shares')} value={loadingPosts ? '—' : fmt(totalShares)} tooltipKey="tooltip.shares" />
                   <MetricKpi label={t('organisch.stat.saved')} value={loadingPosts ? '—' : fmt(totalSaved)} />
                   <MetricKpi label={t('organisch.stat.avgLikes')} value={loadingPosts ? '—' : fmt(avgLikes, 1)} />
-                  <MetricKpi label={t('organisch.stat.profileViews')} value={loadingSummary ? '—' : summary?.profile_views > 0 ? fmtK(summary.profile_views) : '—'} />
+                  <MetricKpi label={t('organisch.stat.profileViews')} value={loadingSummary && loadingDaily ? '—' : hasProfileViews ? fmtK(profileViewsTotal) : '—'} />
                 </div>
+
+                {!loadingSummary && !loadingDaily && !hasProfileViews && (
+                  <p className="text-xs text-muted-foreground mb-6 px-1">{t('organisch.note.profileViewsUnavailable')}</p>
+                )}
 
                 {/* Daily reach trend */}
                 {(loadingDaily || dailyChart.length > 0) && (
@@ -353,165 +325,112 @@ export default function MetaOrganischPage() {
                       {loadingDaily && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                     </div>
                     <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.reachTrendDesc')} · <DateRangeLabel start={startDate} end={endDate} /></p>
-                    {loadingDaily ? (
-                      <ChartSkeleton height={240} />
-                    ) : (
-                      <ResponsiveContainer width="100%" height={240}>
-                        <ComposedChart data={dailyChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <ChartFrame loading={loadingDaily} height={280} chartKey={`organic-daily-${chartKey}`}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={dailyChart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                           <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                           <YAxis yAxisId="left" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                          <YAxis yAxisId="right" orientation="right" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <YAxis yAxisId="right" orientation="right" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} hide={!hasProfileViews} />
                           <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
                           <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
-                          <Bar yAxisId="left" dataKey="reach" name={t('organisch.stat.reach')} fill="#EC4899" radius={[4, 4, 0, 0]} opacity={0.85} />
-                          <Line yAxisId="right" type="monotone" dataKey="profile_views" name={t('organisch.stat.profileViews')} stroke="#FF4D00" strokeWidth={2} dot={false} />
+                          <Bar yAxisId="left" dataKey="reach" name={t('organisch.stat.reach')} fill="#EC4899" radius={[4, 4, 0, 0]} opacity={0.9} isAnimationActive={false} />
+                          {hasProfileViews && (
+                            <Line yAxisId="right" type="monotone" dataKey="profile_views" name={t('organisch.stat.profileViews')} stroke="#FF4D00" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                          )}
                         </ComposedChart>
                       </ResponsiveContainer>
-                    )}
+                    </ChartFrame>
                   </div>
                 )}
 
-                {/* Charts grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                  {(loadingPosts || engagementMix.length > 0) && (
-                    <div className="stat-card">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-foreground font-bold text-lg">{t('organisch.chart.engagementMix')}</p>
-                        {loadingPosts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                      </div>
-                      <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.engagementMixDesc')}</p>
-                      {loadingPosts ? (
-                        <ChartSkeleton />
-                      ) : (
-                        <div className="flex items-center gap-4">
-                          <ResponsiveContainer width="50%" height={200}>
-                            <PieChart>
-                              <Pie data={engagementMix} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
-                                {engagementMix.map((entry, i) => (
-                                  <Cell key={i} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip {...tooltipStyle} formatter={(v: number) => [fmt(v), '']} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div className="space-y-3 flex-1">
-                            {engagementMix.map(d => (
-                              <div key={d.name}>
-                                <div className="flex justify-between text-xs mb-1">
-                                  <span className="flex items-center gap-2 text-muted-foreground">
-                                    <span className="w-2 h-2 rounded-full" style={{ background: d.color }} />
-                                    {d.name}
-                                  </span>
-                                  <span className="font-bold text-foreground">{totalEngagement > 0 ? fmt((d.value / totalEngagement) * 100, 1) : 0}%</span>
-                                </div>
-                                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-                                  <div className="h-full rounded-full" style={{ width: `${totalEngagement > 0 ? (d.value / totalEngagement) * 100 : 0}%`, background: d.color }} />
-                                </div>
-                              </div>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+                  <div className="stat-card xl:col-span-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-foreground font-bold text-lg">{t('organisch.chart.engagementBreakdown')}</p>
+                      {loadingPosts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                    </div>
+                    <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.engagementBreakdownDesc')}</p>
+                    <ChartFrame loading={loadingPosts} height={220} chartKey={`organic-eng-${chartKey}`}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={engagementBreakdown} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} horizontal={false} />
+                          <XAxis type="number" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <YAxis type="category" dataKey="name" tick={{ fill: chart.tick, fontSize: 12 }} axisLine={false} tickLine={false} width={88} />
+                          <Tooltip {...tooltipStyle} formatter={(v: number) => [fmt(v, 0), '']} cursor={{ fill: chart.cursorFill }} />
+                          <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={false}>
+                            {engagementBreakdown.map((entry, i) => (
+                              <Cell key={i} fill={entry.fill} />
                             ))}
-                          </div>
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </ChartFrame>
+                    {!loadingPosts && totalShares === 0 && totalSaved === 0 && (
+                      <p className="text-xs text-muted-foreground mt-3">{t('organisch.note.sharesZero')}</p>
+                    )}
+                  </div>
+
+                  <div className="stat-card">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('organisch.section.contentSummary')}</p>
+                    <p className="text-muted-foreground text-sm mb-5">{t('organisch.chart.contentTypesDesc')}</p>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{t('organisch.chart.contentTypes')}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {contentTypeChart.length > 0 ? contentTypeChart.map(item => (
+                            <span
+                              key={item.type}
+                              className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold"
+                              style={{ borderColor: `${item.fill}55`, background: `${item.fill}18`, color: item.fill }}
+                            >
+                              {item.type}
+                              <span className="opacity-80">{item.count}</span>
+                            </span>
+                          )) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  {(loadingPosts || contentTypeChart.length > 0) && (
-                    <div className="stat-card">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-foreground font-bold text-lg">{t('organisch.chart.contentTypes')}</p>
-                        {loadingPosts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                       </div>
-                      <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.contentTypesDesc')}</p>
-                      {loadingPosts ? (
-                        <ChartSkeleton />
-                      ) : (
-                        <ResponsiveContainer width="100%" height={200}>
-                          <BarChart data={contentTypeChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                            <XAxis dataKey="type" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                            <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
-                            <Bar dataKey="count" name={t('organisch.stat.posts')} radius={[4, 4, 0, 0]}>
-                              {contentTypeChart.map((entry, i) => (
-                                <Cell key={i} fill={entry.fill} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      )}
-                    </div>
-                  )}
-
-                  {(loadingPosts || chartHasData) && (
-                    <div className="stat-card">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-foreground font-bold text-lg">{t('organisch.interactions')}</p>
-                        {loadingPosts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="rounded-xl p-3" style={{ background: 'var(--border)' }}>
+                          <p className="text-xs text-muted-foreground">{t('organisch.stat.reach')}</p>
+                          <p className="text-xl font-bold mt-1">{loadingSummary ? '—' : fmtK(reach)}</p>
+                        </div>
+                        <div className="rounded-xl p-3" style={{ background: 'var(--border)' }}>
+                          <p className="text-xs text-muted-foreground">{t('organisch.stat.engagement')}</p>
+                          <p className="text-xl font-bold mt-1">{loadingPosts ? '—' : fmtPct(engagementRate)}</p>
+                        </div>
+                        <div className="rounded-xl p-3" style={{ background: 'var(--border)' }}>
+                          <p className="text-xs text-muted-foreground">{t('organisch.stat.posts')}</p>
+                          <p className="text-xl font-bold mt-1">{loadingPosts ? '—' : fmt(posts.length, 0)}</p>
+                        </div>
+                        <div className="rounded-xl p-3" style={{ background: 'var(--border)' }}>
+                          <p className="text-xs text-muted-foreground">{t('organisch.stat.avgLikes')}</p>
+                          <p className="text-xl font-bold mt-1">{loadingPosts ? '—' : fmt(avgLikes, 1)}</p>
+                        </div>
                       </div>
-                      <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.interactionsDesc')}</p>
-                      {loadingPosts ? (
-                        <ChartSkeleton />
-                      ) : (
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={chartData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                            <XAxis dataKey="week" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                            <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
-                            <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
-                            <Bar dataKey="likes" name={t('organisch.stat.likes')} stackId="a" fill="#FF4D00" />
-                            <Bar dataKey="comments" name={t('organisch.stat.comments')} stackId="a" fill="#4F7EFF" />
-                            {totalShares > 0 && <Bar dataKey="shares" name={t('organisch.stat.shares')} stackId="a" fill="#10B981" />}
-                            {totalSaved > 0 && <Bar dataKey="saved" name={t('organisch.stat.saved')} stackId="a" fill="#F59E0B" radius={[4, 4, 0, 0]} />}
-                          </BarChart>
-                        </ResponsiveContainer>
-                      )}
                     </div>
-                  )}
-
-                  {(loadingPosts || topReachChart.length > 0) && (
-                    <div className="stat-card">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-foreground font-bold text-lg">{t('organisch.chart.topByReach')}</p>
-                        {loadingPosts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                      </div>
-                      <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.topByReachDesc')}</p>
-                      {loadingPosts ? (
-                        <ChartSkeleton />
-                      ) : (
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={topReachChart} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} horizontal={false} />
-                            <XAxis type="number" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis type="category" dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} width={100} />
-                            <Tooltip {...tooltipStyle} formatter={(v: number) => [fmtK(v), t('organisch.stat.reach')]} cursor={{ fill: chart.cursorFill }} />
-                            <Bar dataKey="reach" fill="#EC4899" radius={[0, 4, 4, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      )}
-                    </div>
-                  )}
+                  </div>
                 </div>
 
-                {/* Engagement rate by format */}
-                {!loadingPosts && typeEngagement.length > 1 && (
+                {!loadingPosts && postPerformanceChart.length > 0 && (
                   <div className="stat-card mb-8">
-                    <p className="text-foreground font-bold text-lg mb-1">{t('organisch.chart.engagementByType')}</p>
-                    <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.engagementByTypeDesc')}</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={typeEngagement} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                        <XAxis dataKey="type" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
-                        <Tooltip {...tooltipStyle} formatter={(v: number) => [`${fmt(v)}%`, t('organisch.stat.engagement')]} cursor={{ fill: chart.cursorFill }} />
-                        <Bar dataKey="rate" radius={[4, 4, 0, 0]}>
-                          {typeEngagement.map((entry, i) => (
-                            <Cell key={i} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <p className="text-foreground font-bold text-lg mb-1">{t('organisch.chart.postPerformance')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('organisch.chart.postPerformanceDesc')}</p>
+                    <ChartFrame loading={false} height={240} chartKey={`organic-posts-${chartKey}`}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={postPerformanceChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                          <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={56} />
+                          <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
+                          <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
+                          <Bar dataKey="likes" name={t('organisch.stat.likes')} fill="#FF4D00" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                          <Bar dataKey="comments" name={t('organisch.stat.comments')} fill="#4F7EFF" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </ChartFrame>
                   </div>
                 )}
 
