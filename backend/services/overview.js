@@ -13,7 +13,6 @@ function monthRanges(count = 6) {
     const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
     ranges.push({
       key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-      label: d.toLocaleDateString('nl-NL', { month: 'short', year: '2-digit' }),
       start: d.toISOString().slice(0, 10),
       end: end.toISOString().slice(0, 10),
     });
@@ -38,7 +37,7 @@ export async function getOverviewExtended(creds, start, end, compareStart, compa
   const scCreds = creds.search_console ? { ...creds.search_console, clientId } : null;
 
   const monthly = await Promise.all(
-    months.map(async ({ key, label, start: ms, end: me }) => {
+    months.map(async ({ key, start: ms, end: me }) => {
       const [g, m] = await Promise.all([
         gCreds?.customer_id
           ? getGoogleAdsSummary(gCreds.customer_id, ms, me, gCreds).catch(() => null)
@@ -49,7 +48,7 @@ export async function getOverviewExtended(creds, start, end, compareStart, compa
       ]);
       const gLeads = g?.conversions ?? 0;
       const mLeads = metaLeads(m);
-      return { month: key, label, gAds: gLeads, meta: mLeads, total: gLeads + mLeads };
+      return { month: key, gAds: gLeads, meta: mLeads, total: gLeads + mLeads };
     }),
   );
 

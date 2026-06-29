@@ -73,7 +73,7 @@ const CHANNEL_LABEL_KEYS: Record<string, string> = {
 export default function OverviewPage() {
   const { startDate, endDate } = useDateRange()
   const { resolvedTheme } = useTheme()
-  const { t: tr, fmt, fmtEur, fmtK, shortDate } = useLanguage()
+  const { t: tr, fmt, fmtEur, fmtK, shortDate, monthLabel } = useLanguage()
   const chart = useChartColors()
   const isDark = resolvedTheme !== 'light'
 
@@ -210,10 +210,13 @@ export default function OverviewPage() {
 
   const momLeads = pctChg(totalLeads, prevTotalLeads)
 
-  const monthlyLeadsChart = (overviewExt?.monthly ?? []).map((m: any) => ({
-    ...m,
-    label: m.label,
-  }))
+  const monthlyLeadsChart = (overviewExt?.monthly ?? []).map((m: any) => {
+    const [y, mo] = (m.month ?? '').split('-').map(Number)
+    const label = y && mo
+      ? monthLabel(new Date(y, mo - 1, 1), true)
+      : m.label
+    return { ...m, label }
+  })
 
   const momChartData = (overviewExt?.mom ?? [])
     .filter((c: any) => c.growth_pct != null)
