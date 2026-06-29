@@ -36,6 +36,36 @@ function mapInsights(ins) {
   };
 }
 
+/** Meta video_play_curve_actions index → time label (seconds 0–14, then buckets). */
+const VIDEO_CURVE_LABELS = [
+  ...Array.from({ length: 15 }, (_, i) => `${i}s`),
+  '15–20s', '20–25s', '25–30s',
+  '30–40s', '40–50s', '50–60s',
+  '60s+',
+];
+
+function parseVideoPlayCurve(ins) {
+  const raw = ins?.video_play_curve_actions?.[0]?.value;
+  if (raw == null) return null;
+
+  let points;
+  if (Array.isArray(raw)) {
+    points = raw.map(v => parseFloat(v)).filter(n => !Number.isNaN(n));
+  } else if (typeof raw === 'string') {
+    points = raw.split(/[,[\]]+/).map(s => parseFloat(s.trim())).filter(n => !Number.isNaN(n));
+  } else {
+    return null;
+  }
+  if (!points.length) return null;
+
+  return points.slice(0, VIDEO_CURVE_LABELS.length).map((pct, i) => ({
+    label: VIDEO_CURVE_LABELS[i] ?? `${i}s`,
+    pct: Math.round(pct * 10) / 10,
+  }));
+}
+
+const VIDEO_INSIGHT_FIELDS = 'impressions,clicks,spend,ctr,video_play_actions,video_30_sec_watched_actions,video_avg_time_watched_actions,video_play_curve_actions,actions,action_values';
+
 function rankCreatives(ads) {
   return [...ads].sort((a, b) => {
     if (b.spend !== a.spend) return b.spend - a.spend;
@@ -75,7 +105,7 @@ export async function getMetaAdCreatives(start, end, creds) {
   const res = await axios.get(`${BASE}/${creds.ad_account_id}/ads`, {
     params: {
       access_token: creds.access_token,
-      fields: `id,name,effective_status,adset{id,name},insights.time_range({"since":"${start}","until":"${end}"}){impressions,clicks,spend,ctr,video_play_actions,video_30_sec_watched_actions,video_avg_time_watched_actions,actions,action_values}`,
+      fields: `id,name,effective_status,adset{id,name},insights.time_range({"since":"${start}","until":"${end}"}){${VIDEO_INSIGHT_FIELDS}}`,
       limit: 50,
     },
   });
@@ -125,7 +155,7 @@ export async function getMetaAdCreativesChart(start, end, creds, limit = 8) {
   const res = await axios.get(`${BASE}/${creds.ad_account_id}/ads`, {
     params: {
       access_token: creds.access_token,
-      fields: `id,name,effective_status,insights.time_range({"since":"${start}","until":"${end}"}){impressions,clicks,spend,ctr,video_play_actions,video_30_sec_watched_actions,video_avg_time_watched_actions,actions,action_values}`,
+      fields: `id,name,effective_status,insights.time_range({"since":"${start}","until":"${end}"}){${VIDEO_INSIGHT_FIELDS}}`,
       limit: 50,
     },
   });
@@ -152,6 +182,41 @@ export async function getMetaAdCreativesChart(start, end, creds, limit = 8) {
         leads: extractActions(ins.actions, 'lead')
           || extractActions(ins.actions, 'onsite_conversion.lead_grouped')
           || extractActions(ins.actions, 'offsite_conversion.fb_pixel_lead'),
+      };
+    })
+    .filter(Boolean);
+
+  return rankCreatives(mapped).slice(0, limit);
+}
+
+export async function getMetaRetentionCurves(start, end, creds, limit = 3) {
+  const res = await axios.get(`${BASE}/${creds.ad_account_id}/ads`, {
+    params: {
+      access_token: creds.access_token,
+      fields: `id,name,effective_status,insights.time_range({"since":"${start}","until":"${end}"}){${VIDEO_INSIGHT_FIELDS}}`,
+      limit: 50,
+    },
+  });
+
+  const mapped = (res.data.data ?? [])
+    .map(ad => {
+      const ins = ad.insights?.data?.[0];
+      if (!ins) return null;
+      const impressions = parseInt2(ins.impressions);
+      const spend = parseNum(ins.spend);
+      if (impressions === 0 && spend === 0) return null;
+
+      const videoPlays = parseNum(ins.video_play_actions?.[0]?.value);
+      const curve = parseVideoPlayCurve(ins);
+      if (!videoPlays || !curve?.length) return null;
+
+      return {
+        id: ad.id,
+        name: ad.name,
+        spend,
+        impressions,
+        thumbstop_rate: impressions > 0 ? (videoPlays / impressions) * 100 : null,
+        retention_curve: curve,
       };
     })
     .filter(Boolean);

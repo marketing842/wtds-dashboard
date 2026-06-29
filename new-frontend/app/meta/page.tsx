@@ -10,7 +10,7 @@ import { MetricKpi } from '@/components/MetricLabel'
 import { useDateRange } from '@/lib/date-range-context'
 import { Eye, MousePointerClick, Euro, Loader2, ShoppingCart, Film, Image } from 'lucide-react'
 import {
-  BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  BarChart, Bar, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ComposedChart, Legend,
 } from 'recharts'
 
@@ -52,6 +52,8 @@ export default function MetaPage() {
   const [creativesChart, setCreativesChart] = useState<any[]>([])
   const [adsCount, setAdsCount] = useState<{ current: number; previous: number | null } | null>(null)
   const [demographics, setDemographics] = useState<any>(null)
+  const [retentionCurves, setRetentionCurves] = useState<any[]>([])
+  const [selectedRetention, setSelectedRetention] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -61,7 +63,7 @@ export default function MetaPage() {
       setError(null)
       try {
         const { ps, pe } = getPrevRange(startDate, endDate)
-        const [sumRes, sumPrevRes, campRes, creativeRes, dailyRes, chartRes, adsCountRes, demoRes] = await Promise.all([
+        const [sumRes, sumPrevRes, campRes, creativeRes, dailyRes, chartRes, adsCountRes, demoRes, retentionRes] = await Promise.all([
           apiFetch(`/api/meta/summary?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/summary?start=${ps}&end=${pe}`),
           apiFetch(`/api/meta/campaign-tree?start=${startDate}&end=${endDate}`),
@@ -70,13 +72,14 @@ export default function MetaPage() {
           apiFetch(`/api/meta/creatives-chart?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/ads-count?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`),
           apiFetch(`/api/meta/demographics?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/meta/retention-curves?start=${startDate}&end=${endDate}`),
         ])
         if (!sumRes.ok) {
           const body = await sumRes.json().catch(() => ({}))
           const code = body?.code ? ` (code ${body.code})` : ''
           throw new Error((body?.error ?? `HTTP ${sumRes.status}`) + code)
         }
-        const [s, sp, c, cr, d, cc, ac, demo] = await Promise.all([
+        const [s, sp, c, cr, d, cc, ac, demo, retention] = await Promise.all([
           sumRes.json(),
           sumPrevRes.ok ? sumPrevRes.json() : null,
           campRes.ok ? campRes.json() : [],
@@ -85,6 +88,7 @@ export default function MetaPage() {
           chartRes.ok ? chartRes.json() : [],
           adsCountRes.ok ? adsCountRes.json() : null,
           demoRes.ok ? demoRes.json() : null,
+          retentionRes.ok ? retentionRes.json() : [],
         ])
         setSummary({ cur: s, prev: sp })
         setCampaigns(c)
@@ -93,6 +97,8 @@ export default function MetaPage() {
         setCreativesChart(cc.filter((x: any) => x.is_video && x.thumbstop_rate != null))
         setAdsCount(ac)
         setDemographics(demo)
+        setRetentionCurves(Array.isArray(retention) ? retention : [])
+        setSelectedRetention(0)
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -129,6 +135,9 @@ export default function MetaPage() {
     impressions: a.impressions,
     clicks: a.clicks,
   }))
+
+  const activeRetention = retentionCurves[selectedRetention] ?? null
+  const retentionChart = activeRetention?.retention_curve ?? []
 
   const tooltipStyle = {
     contentStyle: { background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' },
@@ -268,6 +277,71 @@ export default function MetaPage() {
                         </ResponsiveContainer>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {retentionCurves.length > 0 && (
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('meta.chart.retention')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('meta.chart.retentionDesc')}</p>
+                    {retentionCurves.length > 1 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {retentionCurves.map((ad, i) => (
+                          <button
+                            key={ad.id}
+                            type="button"
+                            onClick={() => setSelectedRetention(i)}
+                            className={`text-xs px-3 py-1.5 rounded-full border transition-colors max-w-[220px] truncate ${
+                              selectedRetention === i
+                                ? 'bg-accent/20 text-accent border-accent/40 font-semibold'
+                                : 'bg-transparent text-muted-foreground border-border hover:border-accent/30'
+                            }`}
+                            title={ad.name}
+                          >
+                            #{i + 1} {truncateLabel(ad.name, 28)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {activeRetention && (
+                      <p className="text-foreground text-sm font-medium mb-3 line-clamp-2">{activeRetention.name}</p>
+                    )}
+                    <ResponsiveContainer width="100%" height={260}>
+                      <LineChart data={retentionChart} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fill: chart.tick, fontSize: 10 }}
+                          axisLine={false}
+                          tickLine={false}
+                          interval={1}
+                          angle={-35}
+                          textAnchor="end"
+                          height={52}
+                        />
+                        <YAxis
+                          tick={{ fill: chart.tick, fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                          domain={[0, 100]}
+                          tickFormatter={v => `${v}%`}
+                        />
+                        <Tooltip
+                          {...tooltipStyle}
+                          formatter={(v: number) => [`${fmt(v)}%`, t('meta.chart.retentionY')]}
+                          cursor={{ stroke: chart.grid }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="pct"
+                          name={t('meta.chart.retentionY')}
+                          stroke="#FF4D00"
+                          strokeWidth={2.5}
+                          dot={{ r: 3, fill: '#FF4D00', strokeWidth: 0 }}
+                          activeDot={{ r: 5, fill: '#FF4D00' }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
 

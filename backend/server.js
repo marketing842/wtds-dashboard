@@ -32,6 +32,7 @@ import {
   getMetaAdCounts,
   getMetaCampaignTree,
   getMetaDemographics,
+  getMetaRetentionCurves,
 } from './services/meta.js';
 import { getOverviewExtended } from './services/overview.js';
 import {
@@ -531,6 +532,27 @@ app.get('/api/meta/demographics', async (req, res) => {
     if (fb?.code === 3018) return res.json({ ages: [] });
     const out = describeApiError(err, 'Meta');
     console.error('[meta/demographics]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/meta/retention-curves', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.meta) return res.status(422).json({ error: 'Meta credentials not configured for this client' });
+    const data = await cached(
+      `mrc_${req.client.id}_${start}_${end}`,
+      () => getMetaRetentionCurves(start, end, creds.meta),
+      5 * 60 * 1000,
+    );
+    res.json(data);
+  } catch (err) {
+    const fb = err.response?.data?.error;
+    if (fb?.code === 3018) return res.json([]);
+    const out = describeApiError(err, 'Meta');
+    console.error('[meta/retention-curves]', out.detail);
     res.status(500).json(out);
   }
 });
