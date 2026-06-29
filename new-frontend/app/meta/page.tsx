@@ -11,7 +11,7 @@ import { useDateRange } from '@/lib/date-range-context'
 import { Eye, MousePointerClick, Euro, Loader2, ShoppingCart, Film, Image } from 'lucide-react'
 import {
   BarChart, Bar, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ComposedChart, Legend,
+  ResponsiveContainer, ComposedChart, Legend, ReferenceLine,
 } from 'recharts'
 
 import { apiFetch } from '@/lib/api'
@@ -40,6 +40,35 @@ function pctChg(a: number, b: number | null | undefined) {
 }
 
 const RANK_COLOR = ['text-yellow-400', 'text-muted-foreground', 'text-orange-400']
+const RETENTION_LINE_COLORS = ['#FF4D00', '#4F7EFF', '#10B981']
+
+function retentionTickVisible(label: string) {
+  if (label === '60s+' || label.includes('–')) return true
+  const sec = parseInt(label, 10)
+  if (Number.isNaN(sec)) return false
+  return sec === 0 || sec % 5 === 0
+}
+
+function buildRetentionCompareChart(curves: any[]) {
+  const labels = curves[0]?.retention_curve?.map((p: any) => p.label) ?? []
+  return labels.map(label => {
+    const row: Record<string, string | number | null> = { label }
+    curves.forEach((ad, i) => {
+      const pt = ad.retention_curve?.find((p: any) => p.label === label)
+      row[`ad${i}`] = pt?.pct ?? null
+    })
+    return row
+  })
+}
+
+function RetentionDot(props: any) {
+  const { cx, cy, payload } = props
+  if (cx == null || cy == null) return null
+  const marker = payload?.label === '3s' || payload?.label === '15s'
+  if (!marker) return <circle cx={cx} cy={cy} r={2} fill={props.stroke ?? '#FF4D00'} />
+  const fill = payload.label === '3s' ? '#FF4D00' : '#8B5CF6'
+  return <circle cx={cx} cy={cy} r={5} fill={fill} stroke="#fff" strokeWidth={1.5} />
+}
 
 export default function MetaPage() {
   const { startDate, endDate } = useDateRange()
@@ -54,6 +83,7 @@ export default function MetaPage() {
   const [demographics, setDemographics] = useState<any>(null)
   const [retentionCurves, setRetentionCurves] = useState<any[]>([])
   const [selectedRetention, setSelectedRetention] = useState(0)
+  const [retentionView, setRetentionView] = useState<'single' | 'compare'>('single')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -138,6 +168,19 @@ export default function MetaPage() {
 
   const activeRetention = retentionCurves[selectedRetention] ?? null
   const retentionChart = activeRetention?.retention_curve ?? []
+  const retentionCompareChart = buildRetentionCompareChart(retentionCurves)
+
+  const retentionXAxis = {
+    dataKey: 'label' as const,
+    tick: { fill: chart.tick, fontSize: 10 },
+    axisLine: false as const,
+    tickLine: false as const,
+    interval: 0 as const,
+    angle: -35,
+    textAnchor: 'end' as const,
+    height: 48,
+    tickFormatter: (label: string) => (retentionTickVisible(label) ? label : ''),
+  }
 
   const tooltipStyle = {
     contentStyle: { background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' },
@@ -282,9 +325,33 @@ export default function MetaPage() {
 
                 {retentionCurves.length > 0 && (
                   <div className="stat-card mb-8">
-                    <p className="text-foreground font-bold text-lg mb-1">{t('meta.chart.retention')}</p>
-                    <p className="text-muted-foreground text-sm mb-4">{t('meta.chart.retentionDesc')}</p>
-                    {retentionCurves.length > 1 && (
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                      <div>
+                        <p className="text-foreground font-bold text-lg mb-1">{t('meta.chart.retention')}</p>
+                        <p className="text-muted-foreground text-sm">{t('meta.chart.retentionDesc')}</p>
+                      </div>
+                      {retentionCurves.length > 1 && (
+                        <div className="flex rounded-lg border overflow-hidden shrink-0" style={{ borderColor: 'var(--border)' }}>
+                          <button
+                            type="button"
+                            onClick={() => setRetentionView('single')}
+                            className={`text-xs px-3 py-1.5 transition-colors ${retentionView === 'single' ? 'bg-accent/20 text-accent font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                          >
+                            {t('meta.chart.retentionSingle')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRetentionView('compare')}
+                            className={`text-xs px-3 py-1.5 transition-colors border-l ${retentionView === 'compare' ? 'bg-accent/20 text-accent font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                            style={{ borderColor: 'var(--border)' }}
+                          >
+                            {t('meta.chart.retentionCompare')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {retentionView === 'single' && retentionCurves.length > 1 && (
                       <div className="flex flex-wrap gap-2 mb-4">
                         {retentionCurves.map((ad, i) => (
                           <button
@@ -303,44 +370,89 @@ export default function MetaPage() {
                         ))}
                       </div>
                     )}
-                    {activeRetention && (
+
+                    {retentionView === 'single' && activeRetention && (
                       <p className="text-foreground text-sm font-medium mb-3 line-clamp-2">{activeRetention.name}</p>
                     )}
+
+                    <div className="flex flex-wrap gap-4 mb-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-3 h-0.5 border-t-2 border-dashed border-[#FF4D00]" />
+                        {t('meta.chart.retention3s')}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-3 h-0.5 border-t-2 border-dashed border-[#8B5CF6]" />
+                        {t('meta.chart.retention15s')}
+                      </span>
+                    </div>
+
                     <ResponsiveContainer width="100%" height={260}>
-                      <LineChart data={retentionChart} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                        <XAxis
-                          dataKey="label"
-                          tick={{ fill: chart.tick, fontSize: 10 }}
-                          axisLine={false}
-                          tickLine={false}
-                          interval={1}
-                          angle={-35}
-                          textAnchor="end"
-                          height={52}
-                        />
-                        <YAxis
-                          tick={{ fill: chart.tick, fontSize: 11 }}
-                          axisLine={false}
-                          tickLine={false}
-                          domain={[0, 100]}
-                          tickFormatter={v => `${v}%`}
-                        />
-                        <Tooltip
-                          {...tooltipStyle}
-                          formatter={(v: number) => [`${fmt(v)}%`, t('meta.chart.retentionY')]}
-                          cursor={{ stroke: chart.grid }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="pct"
-                          name={t('meta.chart.retentionY')}
-                          stroke="#FF4D00"
-                          strokeWidth={2.5}
-                          dot={{ r: 3, fill: '#FF4D00', strokeWidth: 0 }}
-                          activeDot={{ r: 5, fill: '#FF4D00' }}
-                        />
-                      </LineChart>
+                      {retentionView === 'compare' && retentionCurves.length > 1 ? (
+                        <LineChart data={retentionCompareChart} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                          <XAxis {...retentionXAxis} />
+                          <YAxis
+                            tick={{ fill: chart.tick, fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                            domain={[0, 100]}
+                            tickFormatter={v => `${v}%`}
+                          />
+                          <Tooltip
+                            {...tooltipStyle}
+                            formatter={(v: number, name: string) => {
+                              const idx = parseInt(name.replace('ad', ''), 10)
+                              const adName = retentionCurves[idx]?.name
+                              return [`${fmt(v)}%`, adName ? truncateLabel(adName, 24) : t('meta.chart.retentionY')]
+                            }}
+                            cursor={{ stroke: chart.grid }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 11, color: chart.tick }} formatter={(_v, entry) => truncateLabel(retentionCurves[parseInt(String(entry.dataKey).replace('ad', ''), 10)]?.name ?? '', 22)} />
+                          <ReferenceLine x="3s" stroke="#FF4D00" strokeDasharray="4 4" strokeOpacity={0.45} />
+                          <ReferenceLine x="15s" stroke="#8B5CF6" strokeDasharray="4 4" strokeOpacity={0.45} />
+                          {retentionCurves.map((ad, i) => (
+                            <Line
+                              key={ad.id}
+                              type="monotone"
+                              dataKey={`ad${i}`}
+                              name={`ad${i}`}
+                              stroke={RETENTION_LINE_COLORS[i] ?? '#888'}
+                              strokeWidth={2}
+                              dot={false}
+                              activeDot={{ r: 4 }}
+                              connectNulls
+                            />
+                          ))}
+                        </LineChart>
+                      ) : (
+                        <LineChart data={retentionChart} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                          <XAxis {...retentionXAxis} />
+                          <YAxis
+                            tick={{ fill: chart.tick, fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                            domain={[0, 100]}
+                            tickFormatter={v => `${v}%`}
+                          />
+                          <Tooltip
+                            {...tooltipStyle}
+                            formatter={(v: number) => [`${fmt(v)}%`, t('meta.chart.retentionY')]}
+                            cursor={{ stroke: chart.grid }}
+                          />
+                          <ReferenceLine x="3s" stroke="#FF4D00" strokeDasharray="4 4" strokeOpacity={0.45} />
+                          <ReferenceLine x="15s" stroke="#8B5CF6" strokeDasharray="4 4" strokeOpacity={0.45} />
+                          <Line
+                            type="monotone"
+                            dataKey="pct"
+                            name={t('meta.chart.retentionY')}
+                            stroke="#FF4D00"
+                            strokeWidth={2.5}
+                            dot={<RetentionDot stroke="#FF4D00" />}
+                            activeDot={{ r: 5, fill: '#FF4D00' }}
+                          />
+                        </LineChart>
+                      )}
                     </ResponsiveContainer>
                   </div>
                 )}
