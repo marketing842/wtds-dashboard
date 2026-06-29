@@ -111,6 +111,7 @@ export default function MetaOrganischPage() {
   const chartTick   = isDark ? '#8B92A9' : '#9CA3AF'
 
   const [summary, setSummary] = useState<any>(null)
+  const [facebook, setFacebook] = useState<any>(null)
   const [posts, setPosts]     = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
@@ -123,20 +124,23 @@ export default function MetaOrganischPage() {
       await new Promise(r => setTimeout(r, 600))
       if (!active) return
       try {
-        const [sumRes, postsRes] = await Promise.all([
+        const [sumRes, postsRes, extRes] = await Promise.all([
           apiFetch(`/api/instagram/summary?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/instagram/posts?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/instagram/extended?start=${startDate}&end=${endDate}`),
         ])
         if (!sumRes.ok) {
           const body = await sumRes.json().catch(() => ({}))
           throw new Error(body?.error ?? `HTTP ${sumRes.status}`)
         }
-        const [s, p] = await Promise.all([
+        const [s, p, ext] = await Promise.all([
           sumRes.json(),
           postsRes.ok ? postsRes.json() : [],
+          extRes.ok ? extRes.json() : null,
         ])
         if (!active) return
-        setSummary(s)
+        setSummary(ext?.instagram ?? s)
+        setFacebook(ext?.facebook ?? { available: false })
         setPosts(p)
       } catch (e: any) {
         if (!active) return
@@ -269,6 +273,58 @@ export default function MetaOrganischPage() {
                     />
                   )}
                 </div>
+
+                {(summary?.reach_split_available || summary?.reach_split_available === false) && (
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('organisch.reachSplit')}</p>
+                    {summary.reach_split_available ? (
+                      <div className="grid grid-cols-2 gap-6 mt-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">{t('organisch.reachFollowers')}</p>
+                          <p className="text-2xl font-bold text-foreground">{fmtK(summary.followers_reach ?? 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">{t('organisch.reachNonFollowers')}</p>
+                          <p className="text-2xl font-bold text-accent">{fmtK(summary.non_followers_reach ?? 0)}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-2">{t('organisch.reachSplitUnavailable')}</p>
+                    )}
+                  </div>
+                )}
+
+                {facebook === null ? null : facebook.available ? (
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('organisch.facebook')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{facebook.name} · {t('organisch.facebookDesc')}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                      <div><p className="text-xs text-muted-foreground">{t('organisch.facebookFans')}</p><p className="text-xl font-bold">{fmt(facebook.fans)}</p></div>
+                      <div><p className="text-xs text-muted-foreground">{t('organisch.facebookImpressions')}</p><p className="text-xl font-bold">{fmtK(facebook.impressions)}</p></div>
+                      <div><p className="text-xs text-muted-foreground">{t('organisch.facebookEngaged')}</p><p className="text-xl font-bold">{fmtK(facebook.engaged_users)}</p></div>
+                      <div><p className="text-xs text-muted-foreground">{t('organisch.stat.posts')}</p><p className="text-xl font-bold">{facebook.posts?.length ?? 0}</p></div>
+                    </div>
+                    {(facebook.posts ?? []).length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">{t('organisch.facebookPosts')}</p>
+                        <div className="space-y-3">
+                          {facebook.posts.slice(0, 5).map((post: any) => (
+                            <div key={post.id} className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                              <p className="text-sm text-foreground mb-2 line-clamp-2">{post.message}</p>
+                              <div className="flex gap-4 text-xs text-muted-foreground">
+                                <span>{t('organisch.stat.likes')}: {post.likes}</span>
+                                <span>{t('organisch.stat.comments')}: {post.comments}</span>
+                                <span>{t('organisch.stat.shares')}: {post.shares}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground mb-8">{t('organisch.noFacebook')}</p>
+                )}
 
                 {/* Best posts + Chart */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

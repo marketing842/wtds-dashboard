@@ -9,7 +9,7 @@ import { useDateRange } from '@/lib/date-range-context'
 import { MousePointerClick, Eye, Euro, Target, Loader2, RefreshCw } from 'lucide-react'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ComposedChart, Legend,
+  ResponsiveContainer, ComposedChart, Legend, ReferenceLine, Cell,
 } from 'recharts'
 
 import { apiFetch } from '@/lib/api'
@@ -57,6 +57,9 @@ export default function CampaignsPage() {
   const [daily, setDaily] = useState<any[]>([])
   const [impressionShare, setImpressionShare] = useState<any>(null)
   const [brandUplift, setBrandUplift] = useState<any>(null)
+  const [conversionTypes, setConversionTypes] = useState<any[]>([])
+  const [channelBenchmarks, setChannelBenchmarks] = useState<any[]>([])
+  const [demographics, setDemographics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [kwLoading, setKwLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -68,28 +71,37 @@ export default function CampaignsPage() {
       setError(null)
       try {
         const { prev_start, prev_end } = getPrevRange(startDate, endDate)
-        const [sumRes, sumPrevRes, campRes, dailyRes, isRes, brandRes] = await Promise.all([
+        const [sumRes, sumPrevRes, campRes, dailyRes, isRes, brandRes, convRes, benchRes, demoRes] = await Promise.all([
           apiFetch(`/api/google-ads/summary?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/google-ads/summary?start=${prev_start}&end=${prev_end}`),
           apiFetch(`/api/google-ads/campaigns?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/google-ads/daily?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/google-ads/impression-share?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/brand-uplift?start=${startDate}&end=${endDate}&compare_start=${prev_start}&compare_end=${prev_end}`),
+          apiFetch(`/api/google-ads/conversions?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/google-ads/channel-benchmarks?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/google-ads/demographics?start=${startDate}&end=${endDate}`),
         ])
         if (!sumRes.ok) throw new Error(`Google Ads: ${sumRes.status}`)
-        const [s, sp, c, d, is, brand] = await Promise.all([
+        const [s, sp, c, d, is, brand, conv, bench, demo] = await Promise.all([
           sumRes.json(),
           sumPrevRes.ok ? sumPrevRes.json() : null,
           campRes.ok ? campRes.json() : [],
           dailyRes.ok ? dailyRes.json() : [],
           isRes.ok ? isRes.json() : null,
           brandRes.ok ? brandRes.json() : null,
+          convRes.ok ? convRes.json() : [],
+          benchRes.ok ? benchRes.json() : [],
+          demoRes.ok ? demoRes.json() : null,
         ])
         setSummary({ current: s, prev: sp })
         setCampaigns(c)
         setDaily(d)
         setImpressionShare(is)
         setBrandUplift(brand)
+        setConversionTypes(conv)
+        setChannelBenchmarks(bench)
+        setDemographics(demo)
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -161,6 +173,12 @@ export default function CampaignsPage() {
   const brandTrend = (brandUplift?.trend ?? []).map((d: any) => ({
     ...d,
     label: shortDate(d.date),
+  }))
+
+  const benchmarkChart = channelBenchmarks.map(b => ({
+    name: b.label,
+    ctr: Math.round(b.ctr * 10) / 10,
+    benchmark: b.benchmark_ctr,
   }))
 
   const tooltipStyle = {
@@ -281,6 +299,85 @@ export default function CampaignsPage() {
                         <Line yAxisId="volume" type="monotone" dataKey="impressionsK" name={t('campaigns.chart.impressionsK')} stroke="#8B5CF6" strokeWidth={2} dot={false} strokeDasharray="4 4" />
                       </ComposedChart>
                     </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Channel CTR benchmarks */}
+                {benchmarkChart.length > 0 && (
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.channelBenchmarks')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('campaigns.channelBenchmarksDesc')}</p>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={benchmarkChart} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                        <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${fmt(v)}%`} domain={[0, 'auto']} />
+                        <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [`${fmt(v)}%`, name === 'benchmark' ? t('campaigns.benchmarkLine') : 'CTR']} />
+                        <Bar dataKey="ctr" name="CTR" radius={[4, 4, 0, 0]}>
+                          {benchmarkChart.map((entry, i) => (
+                            <Cell key={i} fill={entry.ctr >= entry.benchmark ? '#10B981' : '#FF4D00'} />
+                          ))}
+                        </Bar>
+                        {benchmarkChart.map((entry, i) => (
+                          <ReferenceLine key={`ref-${i}`} y={entry.benchmark} stroke="#8B5CF6" strokeDasharray="4 4" label={{ value: `${entry.benchmark}%`, fill: chart.tick, fontSize: 10 }} />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Conversion types */}
+                {conversionTypes.length > 0 && (
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.conversionTypes')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('campaigns.conversionTypesDesc')}</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[400px] text-sm">
+                        <thead>
+                          <tr className="border-b border-[var(--border)]">
+                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.table.keyword')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.stat.conversions')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.stat.cost')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {conversionTypes.map((row, i) => (
+                            <tr key={i} className="border-b border-[var(--border)] last:border-0">
+                              <td className="px-4 py-3 text-foreground font-medium">{row.name}</td>
+                              <td className="px-4 py-3 text-right">{fmt(row.conversions, 0)}</td>
+                              <td className="px-4 py-3 text-right">{row.value > 0 ? fmtEur(row.value) : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Demographics */}
+                {demographics && (demographics.devices?.length > 0 || demographics.ages?.length > 0 || demographics.genders?.length > 0) && (
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('campaigns.demographics')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('campaigns.demographicsDesc')}</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {[
+                        { key: 'devices', title: t('campaigns.demo.devices'), data: demographics.devices },
+                        { key: 'ages', title: t('campaigns.demo.ages'), data: demographics.ages },
+                        { key: 'genders', title: t('campaigns.demo.genders'), data: demographics.genders },
+                      ].filter(s => s.data?.length > 0).map(section => (
+                        <div key={section.key}>
+                          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">{section.title}</p>
+                          <ResponsiveContainer width="100%" height={180}>
+                            <BarChart data={section.data.slice(0, 6)} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                              <XAxis type="number" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} />
+                              <YAxis type="category" dataKey="label" tick={{ fill: chart.tick, fontSize: 10 }} width={72} axisLine={false} tickLine={false} />
+                              <Tooltip {...tooltipStyle} formatter={(v: number) => [fmt(v, 0), t('campaigns.stat.impressions')]} />
+                              <Bar dataKey="impressions" fill="#FF4D00" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

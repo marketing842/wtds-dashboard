@@ -159,3 +159,21 @@ export async function getBrandedSearchTrend(start, end, creds) {
 
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
+
+export async function getPositionTrend(start, end, creds) {
+  const rows = await query({
+    startDate: start,
+    endDate: end,
+    dimensions: ['date'],
+    rowLimit: 25000,
+  }, creds);
+
+  return rows
+    .map(r => ({
+      date: r.keys[0],
+      position: Math.round((r.position ?? 0) * 10) / 10,
+      clicks: r.clicks ?? 0,
+      impressions: r.impressions ?? 0,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}

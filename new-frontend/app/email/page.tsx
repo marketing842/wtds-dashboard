@@ -15,6 +15,7 @@ import {
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
 import { AudiencesSection } from '@/components/AudiencesSection'
+import { FlowFunnelVisual } from '@/components/FlowFunnelVisual'
 import { useChartColors, truncateLabel } from '@/lib/chart-theme'
 
 function fmt(n: number, decimals = 1) {
@@ -397,25 +398,31 @@ export default function EmailPage() {
                           </div>
 
                           {!flow.no_activity && (
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                            <div>
-                              <p className="text-muted-foreground text-xs font-medium">{t('email.table.opens')}</p>
-                              <p className="text-lg font-bold text-foreground mt-1">{flow.opens}</p>
-                              <p className="text-muted-foreground text-xs mt-1">{fmt(flow.open_rate)}%</p>
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-muted-foreground text-xs font-medium">{t('email.table.opens')}</p>
+                                <p className="text-lg font-bold text-foreground mt-1">{flow.opens}</p>
+                                <p className="text-muted-foreground text-xs mt-1">{fmt(flow.open_rate)}%</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground text-xs font-medium">{t('email.table.clicks')}</p>
+                                <p className="text-lg font-bold text-foreground mt-1">{flow.clicks}</p>
+                                <p className="text-muted-foreground text-xs mt-1">{fmt(flow.click_rate)}%</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground text-xs font-medium">{t('email.stat.ctor')}</p>
+                                <p className="text-lg font-bold text-foreground mt-1">{fmt(flow.ctor)}%</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground text-xs font-medium">{t('email.table.unsubs')}</p>
+                                <p className="text-lg font-bold text-foreground mt-1">{flow.unsubscribes}</p>
+                                <p className="text-muted-foreground text-xs mt-1">{fmt(flow.unsub_rate)}%</p>
+                              </div>
                             </div>
                             <div>
-                              <p className="text-muted-foreground text-xs font-medium">{t('email.table.clicks')}</p>
-                              <p className="text-lg font-bold text-foreground mt-1">{flow.clicks}</p>
-                              <p className="text-muted-foreground text-xs mt-1">{fmt(flow.click_rate)}%</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground text-xs font-medium">{t('email.stat.ctor')}</p>
-                              <p className="text-lg font-bold text-foreground mt-1">{fmt(flow.ctor)}%</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground text-xs font-medium">{t('email.table.unsubs')}</p>
-                              <p className="text-lg font-bold text-foreground mt-1">{flow.unsubscribes}</p>
-                              <p className="text-muted-foreground text-xs mt-1">{fmt(flow.unsub_rate)}%</p>
+                              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">{t('email.funnel.title')}</p>
+                              <FlowFunnelVisual flow={flow} t={t} />
                             </div>
                           </div>
                           )}

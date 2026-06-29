@@ -51,6 +51,7 @@ export default function MetaPage() {
   const [daily, setDaily] = useState<any[]>([])
   const [creativesChart, setCreativesChart] = useState<any[]>([])
   const [adsCount, setAdsCount] = useState<{ current: number; previous: number | null } | null>(null)
+  const [demographics, setDemographics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,7 +61,7 @@ export default function MetaPage() {
       setError(null)
       try {
         const { ps, pe } = getPrevRange(startDate, endDate)
-        const [sumRes, sumPrevRes, campRes, creativeRes, dailyRes, chartRes, adsCountRes] = await Promise.all([
+        const [sumRes, sumPrevRes, campRes, creativeRes, dailyRes, chartRes, adsCountRes, demoRes] = await Promise.all([
           apiFetch(`/api/meta/summary?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/summary?start=${ps}&end=${pe}`),
           apiFetch(`/api/meta/campaign-tree?start=${startDate}&end=${endDate}`),
@@ -68,13 +69,14 @@ export default function MetaPage() {
           apiFetch(`/api/meta/daily?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/creatives-chart?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/meta/ads-count?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`),
+          apiFetch(`/api/meta/demographics?start=${startDate}&end=${endDate}`),
         ])
         if (!sumRes.ok) {
           const body = await sumRes.json().catch(() => ({}))
           const code = body?.code ? ` (code ${body.code})` : ''
           throw new Error((body?.error ?? `HTTP ${sumRes.status}`) + code)
         }
-        const [s, sp, c, cr, d, cc, ac] = await Promise.all([
+        const [s, sp, c, cr, d, cc, ac, demo] = await Promise.all([
           sumRes.json(),
           sumPrevRes.ok ? sumPrevRes.json() : null,
           campRes.ok ? campRes.json() : [],
@@ -82,6 +84,7 @@ export default function MetaPage() {
           dailyRes.ok ? dailyRes.json() : [],
           chartRes.ok ? chartRes.json() : [],
           adsCountRes.ok ? adsCountRes.json() : null,
+          demoRes.ok ? demoRes.json() : null,
         ])
         setSummary({ cur: s, prev: sp })
         setCampaigns(c)
@@ -89,6 +92,7 @@ export default function MetaPage() {
         setDaily(d)
         setCreativesChart(cc.filter((x: any) => x.is_video && x.thumbstop_rate != null))
         setAdsCount(ac)
+        setDemographics(demo)
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -116,6 +120,12 @@ export default function MetaPage() {
     name: truncateLabel(c.name),
     thumbstop: Math.round((c.thumbstop_rate ?? 0) * 10) / 10,
     hold: Math.round((c.hold_rate ?? 0) * 10) / 10,
+  }))
+
+  const ageChart = (demographics?.ages ?? []).slice(0, 8).map((a: any) => ({
+    age: a.age,
+    impressions: a.impressions,
+    clicks: a.clicks,
   }))
 
   const tooltipStyle = {
@@ -256,6 +266,24 @@ export default function MetaPage() {
                         </ResponsiveContainer>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {ageChart.length > 0 && (
+                  <div className="stat-card mb-8">
+                    <p className="text-foreground font-bold text-lg mb-1">{t('meta.demographics')}</p>
+                    <p className="text-muted-foreground text-sm mb-4">{t('meta.demographicsDesc')}</p>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={ageChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                        <XAxis dataKey="age" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip {...tooltipStyle} cursor={{ fill: chart.cursorFill }} />
+                        <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
+                        <Bar dataKey="impressions" name={t('meta.stat.impressions')} fill="#4F7EFF" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="clicks" name={t('meta.stat.clicks')} fill="#FF4D00" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
 

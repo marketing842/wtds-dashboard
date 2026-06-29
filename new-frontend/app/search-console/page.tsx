@@ -5,12 +5,16 @@ import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
 import { useDateRange } from '@/lib/date-range-context'
-import { MousePointerClick, Eye, TrendingUp, Search, Loader2 } from 'lucide-react'
+import { MousePointerClick, Eye, TrendingUp, Search, Loader2, Gauge } from 'lucide-react'
 
 import { apiFetch } from '@/lib/api'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
 import { useLanguage } from '@/lib/language-context'
+import { useChartColors, shortDate } from '@/lib/chart-theme'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts'
 
 function fmt(n: number, decimals = 1) {
   return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
@@ -44,9 +48,12 @@ function pctChg(a: number, b: number | null | undefined) {
 export default function SearchConsolePage() {
   const { startDate, endDate } = useDateRange()
   const { t } = useLanguage()
+  const chart = useChartColors()
   const [summary, setSummary] = useState<any>(null)
   const [queries, setQueries] = useState<any[]>([])
   const [pages, setPages] = useState<any[]>([])
+  const [positionTrend, setPositionTrend] = useState<any[]>([])
+  const [pagespeed, setPagespeed] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -56,25 +63,31 @@ export default function SearchConsolePage() {
       setError(null)
       try {
         const { ps, pe } = getPrevRange(startDate, endDate)
-        const [sumRes, sumPrevRes, qRes, pRes] = await Promise.all([
+        const [sumRes, sumPrevRes, qRes, pRes, trendRes, psRes] = await Promise.all([
           apiFetch(`/api/search-console/summary?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/search-console/summary?start=${ps}&end=${pe}`),
           apiFetch(`/api/search-console/queries?start=${startDate}&end=${endDate}`),
           apiFetch(`/api/search-console/pages?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/search-console/position-trend?start=${startDate}&end=${endDate}`),
+          apiFetch(`/api/search-console/pagespeed`),
         ])
         if (!sumRes.ok) {
           const body = await sumRes.json().catch(() => ({}))
           throw new Error(body?.error ?? `HTTP ${sumRes.status}`)
         }
-        const [s, sp, q, p] = await Promise.all([
+        const [s, sp, q, p, trend, pageSpeed] = await Promise.all([
           sumRes.json(),
           sumPrevRes.ok ? sumPrevRes.json() : null,
           qRes.ok ? qRes.json() : [],
           pRes.ok ? pRes.json() : [],
+          trendRes.ok ? trendRes.json() : [],
+          psRes.ok ? psRes.json() : null,
         ])
         setSummary({ cur: s, prev: sp })
         setQueries(q)
         setPages(p)
+        setPositionTrend(trend)
+        setPagespeed(pageSpeed)
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -147,6 +160,53 @@ export default function SearchConsolePage() {
                     change={pctChg(cur.position, prev?.position) != null ? { value: Math.abs(pctChg(cur.position, prev?.position)!), isPositive: pctChg(cur.position, prev?.position)! <= 0 } : undefined}
                     icon={Search} delay={300}
                   />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  {positionTrend.length > 0 && (
+                    <div className="stat-card">
+                      <p className="text-foreground font-bold text-lg mb-1">{t('search.positionTrend')}</p>
+                      <p className="text-muted-foreground text-sm mb-4">{t('search.positionTrendDesc')}</p>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={positionTrend.map(d => ({ ...d, label: shortDate(d.date) }))} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                          <XAxis dataKey="label" tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                          <YAxis reversed tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
+                          <Tooltip
+                            contentStyle={{ background: chart.tooltipBg, border: `1px solid ${chart.tooltipBdr}`, borderRadius: 10, color: chart.tooltipText }}
+                            formatter={(v: number) => [fmt(v), t('search.stat.position')]}
+                          />
+                          <Line type="monotone" dataKey="position" stroke="#8B5CF6" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {pagespeed?.configured && (
+                    <div className="stat-card">
+                      <p className="text-foreground font-bold text-lg mb-1">{t('search.pagespeed')}</p>
+                      <p className="text-muted-foreground text-sm mb-4">{t('search.pagespeedDesc')}</p>
+                      {pagespeed.score != null ? (
+                        <div className="flex items-center gap-6">
+                          <div className="flex items-center gap-3">
+                            <Gauge className="w-8 h-8 text-accent" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">{t('search.pagespeedScore')}</p>
+                              <p className={`text-4xl font-black ${pagespeed.score >= 90 ? 'text-emerald-500' : pagespeed.score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>{pagespeed.score}</p>
+                            </div>
+                          </div>
+                          {pagespeed.lcp_ms != null && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">{t('search.pagespeedLcp')}</p>
+                              <p className="text-lg font-bold text-foreground">{(pagespeed.lcp_ms / 1000).toFixed(1)}s</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{pagespeed.error ?? t('search.pagespeedError')}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

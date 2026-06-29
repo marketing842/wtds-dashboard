@@ -164,3 +164,143 @@ export async function getInstagramPosts(start, end, creds) {
 
   return postsWithInsights;
 }
+
+async function getPrimaryFacebookPage(creds) {
+  try {
+    const res = await axios.get(`${BASE}/me/accounts`, {
+      params: { fields: 'id,name,access_token,fan_count', access_token: creds.access_token, limit: 10 },
+    });
+    return (res.data.data ?? [])[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchReachByFollowType(igId, sinceUnix, untilUnix, creds) {
+  try {
+    const res = await axios.get(`${BASE}/${igId}/insights`, {
+      params: {
+        metric: 'reach',
+        period: 'day',
+        since: sinceUnix,
+        until: untilUnix,
+        breakdown: 'follow_type',
+        access_token: creds.access_token,
+      },
+    });
+    let followers = 0;
+    let nonFollowers = 0;
+    for (const metric of res.data.data ?? []) {
+      for (const v of metric.values ?? []) {
+        const val = v.value ?? 0;
+        if (typeof val === 'object') {
+          followers += val.FOLLOWER ?? val.follower ?? 0;
+          nonFollowers += val.NON_FOLLOWER ?? val.non_follower ?? val.NON_FOLLOWERS ?? 0;
+        }
+      }
+      for (const row of metric.total_value?.breakdowns?.[0]?.results ?? []) {
+        const dim = row.dimension_values?.[0] ?? '';
+        const val = row.value ?? 0;
+        if (String(dim).toUpperCase().includes('FOLLOWER') && !String(dim).toUpperCase().includes('NON')) {
+          followers += val;
+        } else if (String(dim).toUpperCase().includes('NON')) {
+          nonFollowers += val;
+        }
+      }
+    }
+    if (followers > 0 || nonFollowers > 0) {
+      return { followers_reach: followers, non_followers_reach: nonFollowers };
+    }
+  } catch (err) {
+    console.error('[instagram/reach-breakdown]', err.response?.data?.error?.message ?? err.message);
+  }
+  return null;
+}
+
+export async function getInstagramExtendedSummary(start, end, creds) {
+  const base = await getInstagramSummary(start, end, creds);
+  const igId = await getIgUserId(creds);
+  const sinceUnix = Math.floor(new Date(start).getTime() / 1000);
+  const untilUnix = Math.floor(new Date(end + 'T23:59:59').getTime() / 1000);
+
+  const [reachSplit, facebook] = await Promise.all([
+    fetchReachByFollowType(igId, sinceUnix, untilUnix, creds),
+    getFacebookPageOrganic(start, end, creds),
+  ]);
+
+  return {
+    instagram: {
+      ...base,
+      followers_reach: reachSplit?.followers_reach ?? null,
+      non_followers_reach: reachSplit?.non_followers_reach ?? null,
+      reach_split_available: reachSplit != null,
+    },
+    facebook,
+  };
+}
+
+export async function getFacebookPageOrganic(start, end, creds) {
+  const page = await getPrimaryFacebookPage(creds);
+  if (!page) return { available: false };
+
+  const sinceUnix = Math.floor(new Date(start).getTime() / 1000);
+  const untilUnix = Math.floor(new Date(end + 'T23:59:59').getTime() / 1000);
+  const token = page.access_token ?? creds.access_token;
+
+  async function sumMetric(metric) {
+    try {
+      const res = await axios.get(`${BASE}/${page.id}/insights`, {
+        params: { metric, period: 'day', since: sinceUnix, until: untilUnix, access_token: token },
+      });
+      return (res.data.data?.[0]?.values ?? []).reduce((s, v) => s + (v.value ?? 0), 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  const [impressions, engaged, postEngagements] = await Promise.all([
+    sumMetric('page_impressions_unique'),
+    sumMetric('page_engaged_users'),
+    sumMetric('page_post_engagements'),
+  ]);
+
+  let posts = [];
+  try {
+    const postsRes = await axios.get(`${BASE}/${page.id}/posts`, {
+      params: {
+        fields: 'id,message,created_time,shares,likes.summary(true),comments.summary(true)',
+        limit: 20,
+        access_token: token,
+      },
+    });
+    const startDate = new Date(start);
+    const endDate = new Date(end + 'T23:59:59');
+    posts = (postsRes.data.data ?? [])
+      .filter(p => {
+        const d = new Date(p.created_time);
+        return d >= startDate && d <= endDate;
+      })
+      .slice(0, 10)
+      .map(p => ({
+        id: p.id,
+        message: p.message ? p.message.slice(0, 100) + (p.message.length > 100 ? '…' : '') : '(no text)',
+        created_time: p.created_time,
+        likes: p.likes?.summary?.total_count ?? 0,
+        comments: p.comments?.summary?.total_count ?? 0,
+        shares: p.shares?.count ?? 0,
+      }));
+  } catch (err) {
+    console.error('[facebook/posts]', err.response?.data?.error?.message ?? err.message);
+  }
+
+  return {
+    available: true,
+    page_id: page.id,
+    name: page.name,
+    fans: page.fan_count ?? 0,
+    impressions,
+    engaged_users: engaged,
+    post_engagements: postEngagements,
+    posts,
+  };
+}

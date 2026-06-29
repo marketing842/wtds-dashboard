@@ -277,3 +277,34 @@ export async function getMetaCampaignTree(start, end, creds) {
     .filter(c => c.impressions > 0 || c.spend > 0 || c.adsets.length > 0)
     .sort((a, b) => b.spend - a.spend);
 }
+
+export async function getMetaDemographics(start, end, creds) {
+  const res = await axios.get(`${BASE}/${creds.ad_account_id}/insights`, {
+    params: {
+      access_token: creds.access_token,
+      fields: 'impressions,clicks,spend,actions',
+      time_range: JSON.stringify({ since: start, until: end }),
+      level: 'account',
+      breakdowns: 'age',
+    },
+  });
+
+  const ages = (res.data.data ?? []).map(row => {
+    const impressions = parseInt2(row.impressions);
+    const clicks = parseInt2(row.clicks);
+    const spend = parseNum(row.spend);
+    const leads = extractActions(row.actions, 'lead')
+      || extractActions(row.actions, 'onsite_conversion.lead_grouped')
+      || extractActions(row.actions, 'offsite_conversion.fb_pixel_lead');
+    return {
+      age: row.age ?? 'unknown',
+      impressions,
+      clicks,
+      spend,
+      leads,
+      ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+    };
+  }).filter(r => r.impressions > 0 || r.spend > 0);
+
+  return { ages: ages.sort((a, b) => b.impressions - a.impressions) };
+}

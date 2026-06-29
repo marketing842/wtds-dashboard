@@ -19,6 +19,9 @@ import {
   getGoogleAdsKeywords,
   getGoogleAdsDailySeries,
   getGoogleAdsImpressionShare,
+  getGoogleAdsConversionTypes,
+  getGoogleAdsChannelBenchmarks,
+  getGoogleAdsDemographics,
 } from './services/google-ads.js';
 import {
   getMetaSummary,
@@ -28,6 +31,7 @@ import {
   getMetaAdCreativesChart,
   getMetaAdCounts,
   getMetaCampaignTree,
+  getMetaDemographics,
 } from './services/meta.js';
 import { getOverviewExtended } from './services/overview.js';
 import {
@@ -36,11 +40,14 @@ import {
   getTopPages,
   getBrandedSearchSummary,
   getBrandedSearchTrend,
+  getPositionTrend,
 } from './services/search-console.js';
 import {
   getInstagramSummary,
   getInstagramPosts,
+  getInstagramExtendedSummary,
 } from './services/instagram.js';
+import { getPageSpeedSummary } from './services/pagespeed.js';
 import {
   getGA4Summary,
   getGA4TopPages,
@@ -323,6 +330,57 @@ app.get('/api/google-ads/impression-share', async (req, res) => {
   }
 });
 
+app.get('/api/google-ads/conversions', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.google_ads) return res.status(422).json({ error: 'Google Ads credentials not configured for this client' });
+    const gCreds = { ...creds.google_ads, clientId: req.client.id };
+    const cid = creds.google_ads.customer_id;
+    const data = await cached(`gact_${req.client.id}_${start}_${end}`, () => getGoogleAdsConversionTypes(cid, start, end, gCreds), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'Google Ads');
+    console.error('[google-ads/conversions]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/google-ads/channel-benchmarks', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.google_ads) return res.status(422).json({ error: 'Google Ads credentials not configured for this client' });
+    const gCreds = { ...creds.google_ads, clientId: req.client.id };
+    const cid = creds.google_ads.customer_id;
+    const data = await cached(`gacb_${req.client.id}_${start}_${end}`, () => getGoogleAdsChannelBenchmarks(cid, start, end, gCreds), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'Google Ads');
+    console.error('[google-ads/channel-benchmarks]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/google-ads/demographics', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.google_ads) return res.status(422).json({ error: 'Google Ads credentials not configured for this client' });
+    const gCreds = { ...creds.google_ads, clientId: req.client.id };
+    const cid = creds.google_ads.customer_id;
+    const data = await cached(`gadem_${req.client.id}_${start}_${end}`, () => getGoogleAdsDemographics(cid, start, end, gCreds), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'Google Ads');
+    console.error('[google-ads/demographics]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
 // ── Meta Ads ─────────────────────────────────────────────────
 
 const META_EMPTY_SUMMARY = { impressions: 0, clicks: 0, spend: 0, reach: 0, cpc: 0, ctr: 0, purchases: 0, purchase_value: 0, roas: 0, leads: 0 };
@@ -460,6 +518,23 @@ app.get('/api/meta/campaign-tree', async (req, res) => {
   }
 });
 
+app.get('/api/meta/demographics', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.meta) return res.status(422).json({ error: 'Meta credentials not configured for this client' });
+    const data = await cached(`mdem_${req.client.id}_${start}_${end}`, () => getMetaDemographics(start, end, creds.meta), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const fb = err.response?.data?.error;
+    if (fb?.code === 3018) return res.json({ ages: [] });
+    const out = describeApiError(err, 'Meta');
+    console.error('[meta/demographics]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
 // ── Overview extended ────────────────────────────────────────
 
 app.get('/api/overview/extended', async (req, res) => {
@@ -530,6 +605,41 @@ app.get('/api/search-console/pages', async (req, res) => {
   }
 });
 
+app.get('/api/search-console/position-trend', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.search_console) return res.status(422).json({ error: 'Search Console credentials not configured for this client' });
+    const scCreds = { ...creds.search_console, clientId: req.client.id };
+    const data = await cached(`gspt_${req.client.id}_${start}_${end}`, () => getPositionTrend(start, end, scCreds));
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'Search Console');
+    console.error('[search-console/position-trend]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/search-console/pagespeed', async (req, res) => {
+  try {
+    const { creds } = req.client;
+    if (!creds.search_console?.site_url) {
+      return res.status(422).json({ error: 'Search Console site URL not configured for this client' });
+    }
+    const data = await cached(
+      `gspd_${req.client.id}_${creds.search_console.site_url}`,
+      () => getPageSpeedSummary(creds.search_console.site_url),
+      60 * 60 * 1000,
+    );
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'PageSpeed');
+    console.error('[search-console/pagespeed]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
 app.get('/api/brand-uplift', async (req, res) => {
   try {
     const { start, end, compare_start, compare_end } = req.query;
@@ -590,6 +700,21 @@ app.get('/api/instagram/posts', async (req, res) => {
   } catch (err) {
     const out = describeApiError(err, 'Instagram');
     console.error('[instagram/posts]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/instagram/extended', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.meta) return res.status(422).json({ error: 'Meta/Instagram credentials not configured for this client' });
+    const data = await cached(`iex_${req.client.id}_${start}_${end}`, () => getInstagramExtendedSummary(start, end, creds.meta), 5 * 60 * 1000);
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'Instagram');
+    console.error('[instagram/extended]', out.detail);
     res.status(500).json(out);
   }
 });
