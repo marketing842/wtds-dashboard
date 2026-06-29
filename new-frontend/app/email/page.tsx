@@ -18,10 +18,6 @@ import { AudiencesSection } from '@/components/AudiencesSection'
 import { FlowFunnelVisual } from '@/components/FlowFunnelVisual'
 import { useChartColors, truncateLabel } from '@/lib/chart-theme'
 
-function fmt(n: number, decimals = 1) {
-  return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
-}
-
 function pctChange(current: number, prev: number | null) {
   if (!prev || prev === 0) return null
   return ((current - prev) / prev) * 100
@@ -82,7 +78,7 @@ function flowBadge(flow: any, t: (k: string) => string) {
 
 export default function EmailPage() {
   const { startDate, endDate } = useDateRange()
-  const { t } = useLanguage()
+  const { t, fmt, fmtEur, fmtPct } = useLanguage()
   const chart = useChartColors()
   const [summary, setSummary] = useState<any>(null)
   const [flows, setFlows] = useState<any[]>([])
@@ -194,28 +190,28 @@ export default function EmailPage() {
     {
       label: t('email.stat.delivered'),
       tooltipKey: 'tooltip.delivered',
-      value: <AnimatedNumber value={cur.delivered} delay={0}   formatter={n => Math.round(n).toLocaleString('nl-NL')} />,
+      value: <AnimatedNumber value={cur.delivered} delay={0} />,
       change: pctChange(cur.delivered, prev?.delivered),
       icon: Mail,
     },
     {
       label: t('email.stat.openRate'),
       tooltipKey: 'tooltip.openRate',
-      value: <AnimatedNumber value={cur.open_rate} delay={100} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />,
+      value: <AnimatedNumber value={cur.open_rate} delay={100} formatter={n => fmtPct(n)} />,
       change: prev ? pctChange(cur.open_rate, prev.open_rate) : null,
       icon: CheckCircle,
     },
     {
       label: t('email.stat.clickRate'),
       tooltipKey: 'tooltip.clickRate',
-      value: <AnimatedNumber value={cur.click_rate} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />,
+      value: <AnimatedNumber value={cur.click_rate} delay={200} formatter={n => fmtPct(n)} />,
       change: prev ? pctChange(cur.click_rate, prev.click_rate) : null,
       icon: MousePointerClick,
     },
     {
       label: t('email.stat.ctor'),
       tooltipKey: 'tooltip.ctor',
-      value: <AnimatedNumber value={cur.ctor} delay={300} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />,
+      value: <AnimatedNumber value={cur.ctor} delay={300} formatter={n => fmtPct(n)} />,
       change: prev ? pctChange(cur.ctor, prev.ctor) : null,
       icon: TrendingUp,
     },
@@ -290,7 +286,7 @@ export default function EmailPage() {
                       {[
                         { label: t('email.stat.openRate'), value: `${fmt(bestFlow.open_rate)}%`, accent: true },
                         { label: t('email.stat.ctor'), value: `${fmt(bestFlow.ctor)}%`, accent: false },
-                        { label: t('email.stat.delivered'), value: bestFlow.delivered.toLocaleString('nl-NL'), accent: false },
+                        { label: t('email.stat.delivered'), value: fmt(bestFlow.delivered, 0), accent: false },
                         { label: t('email.stat.unsubRate'), value: `${fmt(bestFlow.unsub_rate)}%`, accent: false },
                       ].map(item => (
                         <div key={item.label} className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
@@ -345,8 +341,8 @@ export default function EmailPage() {
                         <BarChart data={revenueChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                           <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
-                          <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `€${v.toLocaleString('nl-NL')}`} />
-                          <Tooltip {...tooltipStyle} formatter={(v: number) => [`€${v.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}`, t('email.chart.revenueLabel')]} cursor={{ fill: chart.cursorFill }} />
+                          <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => fmtEur(v)} />
+                          <Tooltip {...tooltipStyle} formatter={(v: number) => [fmtEur(v), t('email.chart.revenueLabel')]} cursor={{ fill: chart.cursorFill }} />
                           <Bar dataKey="revenue" fill="#FF4D00" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>

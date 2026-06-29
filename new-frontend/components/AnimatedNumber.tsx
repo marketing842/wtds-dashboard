@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useLanguage } from '@/lib/language-context'
 
 interface AnimatedNumberProps {
   value: number
@@ -13,8 +14,10 @@ export function AnimatedNumber({
   value,
   duration = 1400,
   delay = 120,
-  formatter = (n) => Math.round(n).toLocaleString('nl-NL'),
+  formatter,
 }: AnimatedNumberProps) {
+  const { fmt } = useLanguage()
+  const format = formatter ?? ((n: number) => fmt(Math.round(n), 0))
   const [current, setCurrent] = useState(0)
   const rafRef  = useRef<number>()
   const alive   = useRef(true)
@@ -44,5 +47,5 @@ export function AnimatedNumber({
     }
   }, [value, duration, delay])
 
-  return <>{formatter(current)}</>
+  return <>{format(current)}</>
 }

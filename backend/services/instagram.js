@@ -239,6 +239,57 @@ export async function getInstagramExtendedSummary(start, end, creds) {
   };
 }
 
+export async function getInstagramDailyInsights(start, end, creds) {
+  const igId = await getIgUserId(creds);
+  const sinceUnix = Math.floor(new Date(start).getTime() / 1000);
+  const untilUnix = Math.floor(new Date(end + 'T23:59:59').getTime() / 1000);
+
+  async function fetchDaily(metric) {
+    try {
+      const res = await axios.get(`${BASE}/${igId}/insights`, {
+        params: {
+          metric,
+          period: 'day',
+          since: sinceUnix,
+          until: untilUnix,
+          access_token: creds.access_token,
+        },
+      });
+      return (res.data.data?.[0]?.values ?? []).map(v => ({
+        date: (v.end_time ?? '').slice(0, 10),
+        value: v.value ?? 0,
+      }));
+    } catch (err) {
+      console.error(`[instagram/daily] ${metric}:`, err.response?.data?.error?.message ?? err.message);
+      return [];
+    }
+  }
+
+  const [reach, profileViews, newFollowers] = await Promise.all([
+    fetchDaily('reach'),
+    fetchDaily('profile_views'),
+    fetchDaily('follower_count'),
+  ]);
+
+  const byDate = new Map();
+  for (const row of reach) {
+    if (!row.date) continue;
+    byDate.set(row.date, { date: row.date, reach: row.value, profile_views: 0, new_followers: 0 });
+  }
+  for (const row of profileViews) {
+    const cur = byDate.get(row.date) ?? { date: row.date, reach: 0, profile_views: 0, new_followers: 0 };
+    cur.profile_views = row.value;
+    byDate.set(row.date, cur);
+  }
+  for (const row of newFollowers) {
+    const cur = byDate.get(row.date) ?? { date: row.date, reach: 0, profile_views: 0, new_followers: 0 };
+    cur.new_followers = row.value;
+    byDate.set(row.date, cur);
+  }
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export async function getFacebookPageOrganic(start, end, creds) {
   const page = await getPrimaryFacebookPage(creds);
   if (!page) return { available: false };

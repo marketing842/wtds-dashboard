@@ -26,15 +26,7 @@ import {
 
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
-import { useChartColors, shortDate } from '@/lib/chart-theme'
-
-function fmt(n: number, decimals = 1) {
-  return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
-}
-
-function fmtEur(n: number) {
-  return `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
+import { useChartColors } from '@/lib/chart-theme'
 
 function getPrevRange(start: string, end: string) {
   const s = new Date(start), e = new Date(end)
@@ -47,6 +39,21 @@ function getPrevRange(start: string, end: string) {
 function pctChg(a: number, b: number | null | undefined) {
   if (!b || b === 0) return null
   return ((a - b) / b) * 100
+}
+
+function ChartSkeleton({ height = 220 }: { height?: number }) {
+  return (
+    <div
+      className="flex items-center justify-center rounded-lg"
+      style={{ height, background: 'var(--border)', opacity: 0.4 }}
+    >
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </div>
+  )
+}
+
+function ValueSkeleton({ wide = false }: { wide?: boolean }) {
+  return <div className={`h-7 skeleton-shimmer rounded ${wide ? 'w-36' : 'w-24'}`} />
 }
 
 interface ChannelErrors {
@@ -66,7 +73,7 @@ const CHANNEL_LABEL_KEYS: Record<string, string> = {
 export default function OverviewPage() {
   const { startDate, endDate } = useDateRange()
   const { resolvedTheme } = useTheme()
-  const { t: tr } = useLanguage()
+  const { t: tr, fmt, fmtEur, fmtK, shortDate } = useLanguage()
   const chart = useChartColors()
   const isDark = resolvedTheme !== 'light'
 
@@ -87,6 +94,8 @@ export default function OverviewPage() {
   const [overviewExt, setOverviewExt] = useState<any>(null)
   // Per-channel loading flags instead of one global spinner
   const [loadingChannels, setLoadingChannels] = useState({ gAds: true, meta: true, klaviyo: true, gsc: true })
+  const [loadingExtended, setLoadingExtended] = useState(true)
+  const [loadingDaily, setLoadingDaily] = useState(true)
   const [errors, setErrors] = useState<ChannelErrors>({})
 
   useEffect(() => {
@@ -97,6 +106,8 @@ export default function OverviewPage() {
       setGAdsDaily([]); setMetaDaily([]); setOverviewExt(null)
       setErrors({})
       setLoadingChannels({ gAds: true, meta: true, klaviyo: true, gsc: true })
+      setLoadingExtended(true)
+      setLoadingDaily(true)
 
       const { ps, pe } = getPrevRange(startDate, endDate)
 
@@ -134,14 +145,18 @@ export default function OverviewPage() {
         .catch(e => setErrors(prev => ({ ...prev, gsc: e.message })))
         .finally(() => setLoadingChannels(prev => ({ ...prev, gsc: false })))
 
-      safeFetch(`/api/google-ads/daily?start=${startDate}&end=${endDate}`)
-        .then(d => setGAdsDaily(d)).catch(() => {})
-
-      safeFetch(`/api/meta/daily?start=${startDate}&end=${endDate}`)
-        .then(d => setMetaDaily(d)).catch(() => {})
+      Promise.allSettled([
+        safeFetch(`/api/google-ads/daily?start=${startDate}&end=${endDate}`),
+        safeFetch(`/api/meta/daily?start=${startDate}&end=${endDate}`),
+      ]).then(([gRes, mRes]) => {
+        if (gRes.status === 'fulfilled') setGAdsDaily(gRes.value)
+        if (mRes.status === 'fulfilled') setMetaDaily(mRes.value)
+      }).finally(() => setLoadingDaily(false))
 
       safeFetch(`/api/overview/extended?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`)
-        .then(d => setOverviewExt(d)).catch(() => {})
+        .then(d => setOverviewExt(d))
+        .catch(() => {})
+        .finally(() => setLoadingExtended(false))
     }, 600)
     return () => clearTimeout(t)
   }, [startDate, endDate])
@@ -261,6 +276,9 @@ export default function OverviewPage() {
   }
 
   const isAnyLoading = Object.values(loadingChannels).some(Boolean)
+  const loadingPipeline = loadingExtended || loadingChannels.gAds || loadingChannels.meta
+  const loadingOverviewCharts = loadingExtended
+  const loadingBottomCharts = loadingChannels.gAds || loadingChannels.meta || loadingChannels.gsc
   const hasAnyData = gAds || meta || klaviyo || gsc
   const errorEntries = Object.entries(errors)
 
@@ -303,28 +321,28 @@ export default function OverviewPage() {
                       <StatCard
                         label={tr('dashboard.stat.totalSpend')}
                         tooltipKey="tooltip.spend"
-                        value={<AnimatedNumber value={totalSpend} delay={0}   formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />}
+                        value={<AnimatedNumber value={totalSpend} delay={0} formatter={n => fmtEur(n)} />}
                         change={pctChg(totalSpend, prevTotalSpend) != null ? { value: Math.abs(pctChg(totalSpend, prevTotalSpend)!), isPositive: pctChg(totalSpend, prevTotalSpend)! <= 0 } : undefined}
                         icon={Euro} delay={0}
                       />
                       <StatCard
                         label={tr('dashboard.stat.totalLeads')}
                         tooltipKey="tooltip.leads"
-                        value={<AnimatedNumber value={totalLeads} delay={100} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
+                        value={<AnimatedNumber value={totalLeads} delay={100} />}
                         change={pctChg(totalLeads, prevTotalLeads) != null ? { value: Math.abs(pctChg(totalLeads, prevTotalLeads)!), isPositive: pctChg(totalLeads, prevTotalLeads)! >= 0 } : undefined}
                         icon={Target} delay={100}
                       />
                       <StatCard
                         label={tr('dashboard.stat.avgCpl')}
                         tooltipKey="tooltip.kpl"
-                        value={avgCpl !== null ? <AnimatedNumber value={avgCpl} delay={200} formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} /> : '—'}
+                        value={avgCpl !== null ? <AnimatedNumber value={avgCpl} delay={200} formatter={n => fmtEur(n)} /> : '—'}
                         change={avgCpl !== null && prevAvgCpl !== null && pctChg(avgCpl, prevAvgCpl) != null ? { value: Math.abs(pctChg(avgCpl, prevAvgCpl)!), isPositive: pctChg(avgCpl, prevAvgCpl)! <= 0 } : undefined}
                         icon={Target} delay={200}
                       />
                       <StatCard
                         label={tr('dashboard.stat.totalImpressions')}
                         tooltipKey="tooltip.impressions"
-                        value={<AnimatedNumber value={totalImpressions} delay={300} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
+                        value={<AnimatedNumber value={totalImpressions} delay={300} formatter={n => fmtK(n)} />}
                         change={pctChg(totalImpressions, prevTotalImpressions) != null ? { value: Math.abs(pctChg(totalImpressions, prevTotalImpressions)!), isPositive: pctChg(totalImpressions, prevTotalImpressions)! >= 0 } : undefined}
                         icon={Eye} delay={300}
                       />
@@ -442,8 +460,18 @@ export default function OverviewPage() {
                         { label: tr('dashboard.pipeline.momLeads'), value: momLeads, isPct: true },
                       ].map(item => (
                         <div key={item.label} className="stat-card py-4">
-                          <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
-                          {'isPct' in item && item.isPct ? (
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs text-muted-foreground">{item.label}</p>
+                            {loadingPipeline && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                          </div>
+                          {loadingPipeline ? (
+                            <>
+                              <ValueSkeleton wide={'isEur' in item && item.isEur} />
+                              {'isEur' in item && item.isEur && (
+                                <div className="h-3 w-44 skeleton-shimmer rounded mt-2" />
+                              )}
+                            </>
+                          ) : 'isPct' in item && item.isPct ? (
                             <p className={`text-xl font-bold ${momLeads != null && momLeads >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
                               {momLeads != null ? `${momLeads >= 0 ? '+' : ''}${fmt(momLeads)}%` : '—'}
                             </p>
@@ -462,10 +490,16 @@ export default function OverviewPage() {
                     </div>
 
                     {/* 6-month leads trend */}
-                    {monthlyLeadsChart.length > 0 && (
+                    {(loadingOverviewCharts || monthlyLeadsChart.length > 0) && (
                       <div className="stat-card mb-8">
-                        <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.monthlyLeads')}</p>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.monthlyLeads')}</p>
+                          {loadingOverviewCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        </div>
                         <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.chart.monthlyLeadsDesc')}</p>
+                        {loadingOverviewCharts ? (
+                          <ChartSkeleton height={240} />
+                        ) : (
                         <ResponsiveContainer width="100%" height={240}>
                           <BarChart data={monthlyLeadsChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
@@ -483,14 +517,21 @@ export default function OverviewPage() {
                             <Bar dataKey="meta" name={tr('dashboard.channel.meta')} stackId="leads" fill="#4F7EFF" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
+                        )}
                       </div>
                     )}
 
                     {/* MoM by channel */}
-                    {momChartData.length > 0 && (
+                    {(loadingOverviewCharts || momChartData.length > 0) && (
                       <div className="stat-card mb-8">
-                        <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.momByChannel')}</p>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.momByChannel')}</p>
+                          {loadingOverviewCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        </div>
                         <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.chart.momByChannelDesc')}</p>
+                        {loadingOverviewCharts ? (
+                          <ChartSkeleton height={220} />
+                        ) : (
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={momChartData} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} horizontal={false} />
@@ -508,14 +549,21 @@ export default function OverviewPage() {
                             </Bar>
                           </BarChart>
                         </ResponsiveContainer>
+                        )}
                       </div>
                     )}
 
                     {/* Daily leads trend */}
-                    {dailyLeadsChart.length > 0 && (
+                    {(loadingDaily || dailyLeadsChart.length > 0) && (
                       <div className="stat-card mb-8">
-                        <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.leadsTrend')}</p>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.leadsTrend')}</p>
+                          {loadingDaily && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        </div>
                         <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.chart.leadsTrendDesc')}</p>
+                        {loadingDaily ? (
+                          <ChartSkeleton height={220} />
+                        ) : (
                         <ResponsiveContainer width="100%" height={220}>
                           <LineChart data={dailyLeadsChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
@@ -534,6 +582,7 @@ export default function OverviewPage() {
                             <Line type="monotone" dataKey="meta" name={tr('dashboard.channel.meta')} stroke="#4F7EFF" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
                           </LineChart>
                         </ResponsiveContainer>
+                        )}
                       </div>
                     )}
 
@@ -541,7 +590,13 @@ export default function OverviewPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                       {/* Spend by Channel */}
                       <div className="stat-card">
-                        <p className="text-sm font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.spendByChannel')}</p>
+                        <div className="flex items-center justify-between mb-6">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.spendByChannel')}</p>
+                          {loadingBottomCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        </div>
+                        {loadingBottomCharts ? (
+                          <ChartSkeleton height={220} />
+                        ) : (
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={spendChartData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
@@ -557,11 +612,18 @@ export default function OverviewPage() {
                             <Bar dataKey="spend" fill="#FF4D00" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
                           </BarChart>
                         </ResponsiveContainer>
+                        )}
                       </div>
 
                       {/* Leads / Conversions by Channel */}
                       <div className="stat-card">
-                        <p className="text-sm font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.leadsByChannel')}</p>
+                        <div className="flex items-center justify-between mb-6">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.leadsByChannel')}</p>
+                          {loadingBottomCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        </div>
+                        {loadingBottomCharts ? (
+                          <ChartSkeleton height={220} />
+                        ) : (
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={leadsChartData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
@@ -577,14 +639,21 @@ export default function OverviewPage() {
                             <Bar dataKey="leads" fill="#10B981" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
                           </BarChart>
                         </ResponsiveContainer>
+                        )}
                       </div>
                     </div>
 
                     {/* Kanaalverdeling — Spend Distribution donut */}
-                    {spendPieData.length > 0 && (
+                    {(loadingBottomCharts || spendPieData.length > 0) && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                       <div className="stat-card">
-                        <p className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.channelSpendPct')}</p>
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.channelSpendPct')}</p>
+                          {loadingBottomCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        </div>
+                        {loadingBottomCharts ? (
+                          <ChartSkeleton height={200} />
+                        ) : (
                         <div className="flex items-center gap-6">
                           <ResponsiveContainer width="50%" height={200}>
                             <PieChart>
@@ -630,11 +699,18 @@ export default function OverviewPage() {
                             ))}
                           </div>
                         </div>
+                        )}
                       </div>
 
                       {/* CTR comparison */}
                       <div className="stat-card">
-                        <p className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.ctrByChannel')}</p>
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.ctrByChannel')}</p>
+                          {loadingBottomCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        </div>
+                        {loadingBottomCharts ? (
+                          <ChartSkeleton height={200} />
+                        ) : (
                         <ResponsiveContainer width="100%" height={200}>
                           <BarChart
                             data={ctrChartData}
@@ -653,6 +729,7 @@ export default function OverviewPage() {
                             <Bar dataKey="ctr" fill="#8B5CF6" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
                           </BarChart>
                         </ResponsiveContainer>
+                        )}
                       </div>
                     </div>
                     )}

@@ -3,9 +3,11 @@
 import { DateRangePicker } from '@/components/DateRangePicker'
 import { ModeToggle } from '@/components/ModeToggle'
 import { useClientInfo } from '@/lib/client-context'
+import { useLanguage } from '@/lib/language-context'
 
 export function Header({ title, description, showDatePicker = true }: { title: string; description?: string; showDatePicker?: boolean }) {
   const clientInfo = useClientInfo()
+  const { t } = useLanguage()
 
   return (
     <header
@@ -70,7 +72,7 @@ export function Header({ title, description, showDatePicker = true }: { title: s
               </p>
               <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mt-0.5"
                 style={{ color: 'var(--text-muted)' }}>
-                Marketing
+                {t('header.clientRole')}
               </p>
             </div>
             <div

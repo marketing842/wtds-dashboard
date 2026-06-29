@@ -5,10 +5,6 @@ import { Users, Target, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
 
-function fmt(n: number) {
-  return n.toLocaleString('nl-NL')
-}
-
 function timeAgo(dateStr: string, t: (k: string) => string) {
   const d = new Date(dateStr)
   const now = new Date()
@@ -25,7 +21,7 @@ export function AudiencesSection() {
   const [segments, setSegments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { t } = useLanguage()
+  const { t, fmt } = useLanguage()
 
   useEffect(() => {
     apiFetch('/api/klaviyo/lists')

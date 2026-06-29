@@ -2,11 +2,8 @@
 
 import { useLanguage } from '@/lib/language-context'
 
-function fmt(n: number) {
-  return Math.round(n).toLocaleString('nl-NL')
-}
-
 export function FlowFunnelVisual({ flow, t }: { flow: any; t: (k: string) => string }) {
+  const { fmt, fmtPct } = useLanguage()
   const delivered = flow.delivered ?? 0
   const opens = flow.opens ?? Math.round((flow.open_rate / 100) * delivered)
   const clicks = flow.clicks ?? Math.round((flow.click_rate / 100) * delivered)
@@ -24,7 +21,7 @@ export function FlowFunnelVisual({ flow, t }: { flow: any; t: (k: string) => str
         <div key={step.key}>
           <div className="flex justify-between text-xs mb-1">
             <span className="text-muted-foreground">{step.label}</span>
-            <span className="font-semibold text-foreground">{fmt(step.value)} <span className="text-muted-foreground font-normal">({fmt(step.pct)}%)</span></span>
+            <span className="font-semibold text-foreground">{fmt(step.value)} <span className="text-muted-foreground font-normal">({fmtPct(step.pct, 0)})</span></span>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
             <div

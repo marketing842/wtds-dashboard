@@ -16,10 +16,6 @@ import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
 import { apiErrorKey, parseApiError } from '@/lib/api-error'
 
-function fmt(n: number, decimals = 0) {
-  return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
-}
-
 function fmtDuration(seconds: number) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
@@ -42,7 +38,7 @@ function pctChg(a: number, b: number | null | undefined) {
 export default function AnalyticsPage() {
   const { startDate, endDate } = useDateRange()
   const { resolvedTheme } = useTheme()
-  const { t } = useLanguage()
+  const { t, fmt } = useLanguage()
   const isDark = resolvedTheme !== 'light'
   const chartGrid    = isDark ? '#2E3350' : '#E5E7EB'
   const chartTick    = isDark ? '#8B92A9' : '#9CA3AF'

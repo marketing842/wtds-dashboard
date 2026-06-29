@@ -14,9 +14,9 @@ export function useChartColors() {
   }
 }
 
-export function shortDate(iso: string) {
+export function shortDate(iso: string, locale = 'nl-NL') {
   const d = new Date(iso + 'T12:00:00')
-  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
 }
 
 export function truncateLabel(s: string, max = 22) {

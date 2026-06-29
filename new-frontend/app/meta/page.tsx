@@ -16,15 +16,7 @@ import {
 
 import { apiFetch } from '@/lib/api'
 import { useLanguage } from '@/lib/language-context'
-import { useChartColors, shortDate, truncateLabel } from '@/lib/chart-theme'
-
-function fmt(n: number, decimals = 1) {
-  return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
-}
-
-function fmtEur(n: number) {
-  return `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
+import { useChartColors, truncateLabel } from '@/lib/chart-theme'
 
 function getPrevRange(start: string, end: string) {
   const s = new Date(start), e = new Date(end)
@@ -72,7 +64,7 @@ function RetentionDot(props: any) {
 
 export default function MetaPage() {
   const { startDate, endDate } = useDateRange()
-  const { t } = useLanguage()
+  const { t, fmt, fmtEur, fmtK, shortDate } = useLanguage()
   const chart = useChartColors()
   const [summary, setSummary] = useState<any>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
@@ -217,28 +209,28 @@ export default function MetaPage() {
                   <StatCard
                     label={t('meta.stat.impressions')}
                     tooltipKey="tooltip.impressions"
-                    value={<AnimatedNumber value={cur.impressions} delay={0} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
+                    value={<AnimatedNumber value={cur.impressions} delay={0} formatter={n => fmtK(n)} />}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
                     icon={Eye} delay={0}
                   />
                   <StatCard
                     label={t('meta.stat.clicks')}
                     tooltipKey="tooltip.clicks"
-                    value={<AnimatedNumber value={cur.clicks} delay={100} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
+                    value={<AnimatedNumber value={cur.clicks} delay={100} />}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
                     icon={MousePointerClick} delay={100}
                   />
                   <StatCard
                     label={t('meta.stat.spend')}
                     tooltipKey="tooltip.spend"
-                    value={<AnimatedNumber value={cur.spend} delay={200} formatter={n => `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />}
+                    value={<AnimatedNumber value={cur.spend} delay={200} formatter={n => fmtEur(n)} />}
                     change={pctChg(cur.spend, prev?.spend) != null ? { value: Math.abs(pctChg(cur.spend, prev?.spend)!), isPositive: pctChg(cur.spend, prev?.spend)! <= 0 } : undefined}
                     icon={Euro} delay={200}
                   />
                   <StatCard
                     label={cur.leads > 0 ? t('meta.stat.leads') : t('meta.stat.purchases')}
                     tooltipKey={cur.leads > 0 ? 'tooltip.leads' : 'tooltip.conversions'}
-                    value={<AnimatedNumber value={cur.leads > 0 ? cur.leads : cur.purchases} delay={300} formatter={n => Math.round(n).toLocaleString('nl-NL')} />}
+                    value={<AnimatedNumber value={cur.leads > 0 ? cur.leads : cur.purchases} delay={300} />}
                     change={(() => {
                       const v = cur.leads > 0 ? pctChg(cur.leads, prev?.leads) : pctChg(cur.purchases, prev?.purchases)
                       return v != null ? { value: Math.abs(v), isPositive: v >= 0 } : undefined

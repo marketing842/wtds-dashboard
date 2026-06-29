@@ -11,14 +11,10 @@ import { apiFetch } from '@/lib/api'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
 import { useLanguage } from '@/lib/language-context'
-import { useChartColors, shortDate } from '@/lib/chart-theme'
+import { useChartColors } from '@/lib/chart-theme'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-
-function fmt(n: number, decimals = 1) {
-  return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
-}
 
 function positionStyle(pos: number): { color: string; fontWeight: number } {
   if (pos <= 3)  return { color: '#22C55E', fontWeight: 700 }
@@ -47,7 +43,7 @@ function pctChg(a: number, b: number | null | undefined) {
 
 export default function SearchConsolePage() {
   const { startDate, endDate } = useDateRange()
-  const { t } = useLanguage()
+  const { t, fmt, fmtK, fmtPct, shortDate } = useLanguage()
   const chart = useChartColors()
   const [summary, setSummary] = useState<any>(null)
   const [queries, setQueries] = useState<any[]>([])
@@ -138,28 +134,28 @@ export default function SearchConsolePage() {
                   <StatCard
                     label={t('search.stat.clicks')}
                     tooltipKey="tooltip.clicks"
-                    value={<AnimatedNumber value={cur.clicks} delay={0}   formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
+                    value={<AnimatedNumber value={cur.clicks} delay={0} formatter={n => fmtK(n)} />}
                     change={pctChg(cur.clicks, prev?.clicks) != null ? { value: Math.abs(pctChg(cur.clicks, prev?.clicks)!), isPositive: pctChg(cur.clicks, prev?.clicks)! >= 0 } : undefined}
                     icon={MousePointerClick} delay={0}
                   />
                   <StatCard
                     label={t('search.stat.impressions')}
                     tooltipKey="tooltip.impressions"
-                    value={<AnimatedNumber value={cur.impressions} delay={100} formatter={n => n >= 1000 ? `${(n / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })}K` : Math.round(n).toLocaleString('nl-NL')} />}
+                    value={<AnimatedNumber value={cur.impressions} delay={100} formatter={n => fmtK(n)} />}
                     change={pctChg(cur.impressions, prev?.impressions) != null ? { value: Math.abs(pctChg(cur.impressions, prev?.impressions)!), isPositive: pctChg(cur.impressions, prev?.impressions)! >= 0 } : undefined}
                     icon={Eye} delay={100}
                   />
                   <StatCard
                     label={t('search.stat.ctr')}
                     tooltipKey="tooltip.ctr"
-                    value={<AnimatedNumber value={cur.ctr} delay={200} formatter={n => `${n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })}%`} />}
+                    value={<AnimatedNumber value={cur.ctr} delay={200} formatter={n => fmtPct(n)} />}
                     change={pctChg(cur.ctr, prev?.ctr) != null ? { value: Math.abs(pctChg(cur.ctr, prev?.ctr)!), isPositive: pctChg(cur.ctr, prev?.ctr)! >= 0 } : undefined}
                     icon={TrendingUp} delay={200}
                   />
                   <StatCard
                     label={t('search.stat.position')}
                     tooltipKey="tooltip.position"
-                    value={<AnimatedNumber value={cur.position} delay={300} formatter={n => n.toLocaleString('nl-NL', { maximumFractionDigits: 1 })} />}
+                    value={<AnimatedNumber value={cur.position} delay={300} formatter={n => fmt(n, 1)} />}
                     change={pctChg(cur.position, prev?.position) != null ? { value: Math.abs(pctChg(cur.position, prev?.position)!), isPositive: pctChg(cur.position, prev?.position)! <= 0 } : undefined}
                     icon={Search} delay={300}
                   />

@@ -47,6 +47,7 @@ import {
   getInstagramSummary,
   getInstagramPosts,
   getInstagramExtendedSummary,
+  getInstagramDailyInsights,
 } from './services/instagram.js';
 import { getPageSpeedSummary } from './services/pagespeed.js';
 import {
@@ -737,6 +738,25 @@ app.get('/api/instagram/extended', async (req, res) => {
   } catch (err) {
     const out = describeApiError(err, 'Instagram');
     console.error('[instagram/extended]', out.detail);
+    res.status(500).json(out);
+  }
+});
+
+app.get('/api/instagram/daily', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: 'start and end required (YYYY-MM-DD)' });
+    const { creds } = req.client;
+    if (!creds.meta) return res.status(422).json({ error: 'Meta/Instagram credentials not configured for this client' });
+    const data = await cached(
+      `id_${req.client.id}_${start}_${end}`,
+      () => getInstagramDailyInsights(start, end, creds.meta),
+      5 * 60 * 1000,
+    );
+    res.json(data);
+  } catch (err) {
+    const out = describeApiError(err, 'Instagram');
+    console.error('[instagram/daily]', out.detail);
     res.status(500).json(out);
   }
 });

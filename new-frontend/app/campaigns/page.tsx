@@ -15,15 +15,7 @@ import {
 import { apiFetch } from '@/lib/api'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
 import { useLanguage } from '@/lib/language-context'
-import { useChartColors, shortDate } from '@/lib/chart-theme'
-
-function fmt(n: number, decimals = 1) {
-  return n.toLocaleString('nl-NL', { maximumFractionDigits: decimals })
-}
-
-function fmtEur(n: number) {
-  return `€${n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
+import { useChartColors } from '@/lib/chart-theme'
 
 function getPrevRange(start: string, end: string) {
   const s = new Date(start)
@@ -49,7 +41,7 @@ const MATCH_BADGE: Record<string, { key: string; color: string }> = {
 
 export default function CampaignsPage() {
   const { startDate, endDate } = useDateRange()
-  const { t } = useLanguage()
+  const { t, fmt, fmtEur, shortDate } = useLanguage()
   const chart = useChartColors()
   const [summary, setSummary] = useState<any>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
