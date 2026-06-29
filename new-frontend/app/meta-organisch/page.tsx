@@ -141,7 +141,7 @@ export default function MetaOrganischPage() {
       safeFetch(`/api/instagram/extended?start=${startDate}&end=${endDate}`)
         .then(ext => {
           if (!active) return
-          if (ext?.instagram) setSummary(ext.instagram)
+          if (ext?.instagram) setSummary((prev: any) => ({ ...prev, ...ext.instagram }))
           setFacebook(ext?.facebook ?? { available: false })
         })
         .catch(() => { if (active) setFacebook({ available: false }) })
@@ -163,7 +163,12 @@ export default function MetaOrganischPage() {
   const totalShares = posts.reduce((s, p) => s + (p.shares ?? 0), 0)
   const totalSaved = posts.reduce((s, p) => s + (p.saved ?? 0), 0)
   const totalPostReach = posts.reduce((s, p) => s + (p.reach ?? 0), 0)
-  const reach = (summary?.reach ?? 0) > 0 ? summary.reach : totalPostReach
+  const summaryReach = summary?.reach
+  const reach = summaryReach != null && summaryReach > 0
+    ? summaryReach
+    : totalPostReach > 0
+      ? totalPostReach
+      : Math.max(0, summaryReach ?? 0)
   const totalEngagement = totalLikes + totalComments + totalShares + totalSaved
   const engagementRate = reach > 0 ? (totalEngagement / reach) * 100 : 0
   const avgLikes = posts.length > 0 ? totalLikes / posts.length : 0

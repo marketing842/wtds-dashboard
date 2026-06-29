@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { useTheme } from 'next-themes'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
@@ -56,6 +56,25 @@ function ValueSkeleton({ wide = false }: { wide?: boolean }) {
   return <div className={`h-7 skeleton-shimmer rounded ${wide ? 'w-36' : 'w-24'}`} />
 }
 
+function ChartFrame({
+  loading,
+  height,
+  chartKey,
+  children,
+}: {
+  loading: boolean
+  height: number
+  chartKey: string
+  children: ReactNode
+}) {
+  if (loading) return <ChartSkeleton height={height} />
+  return (
+    <div key={chartKey} style={{ width: '100%', height }}>
+      {children}
+    </div>
+  )
+}
+
 interface ChannelErrors {
   gAds?: string
   meta?: string
@@ -99,7 +118,9 @@ export default function OverviewPage() {
   const [errors, setErrors] = useState<ChannelErrors>({})
 
   useEffect(() => {
+    let active = true
     const t = setTimeout(() => {
+      if (!active) return
       // Reset state & show loading per channel immediately
       setGAds(null); setGAdsPrev(null); setMeta(null); setMetaPrev(null)
       setKlaviyo(null); setGsc(null)
@@ -120,46 +141,49 @@ export default function OverviewPage() {
 
       // Fire all fetches independently — each updates as it completes
       safeFetch(`/api/google-ads/summary?start=${startDate}&end=${endDate}`)
-        .then(d => setGAds(d))
-        .catch(e => setErrors(prev => ({ ...prev, gAds: e.message })))
-        .finally(() => setLoadingChannels(prev => ({ ...prev, gAds: false })))
+        .then(d => { if (active) setGAds(d) })
+        .catch(e => { if (active) setErrors(prev => ({ ...prev, gAds: e.message })) })
+        .finally(() => { if (active) setLoadingChannels(prev => ({ ...prev, gAds: false })) })
 
       safeFetch(`/api/google-ads/summary?start=${ps}&end=${pe}`)
-        .then(d => setGAdsPrev(d)).catch(() => {})
+        .then(d => { if (active) setGAdsPrev(d) }).catch(() => {})
 
       safeFetch(`/api/meta/summary?start=${startDate}&end=${endDate}`)
-        .then(d => setMeta(d))
-        .catch(e => setErrors(prev => ({ ...prev, meta: e.message })))
-        .finally(() => setLoadingChannels(prev => ({ ...prev, meta: false })))
+        .then(d => { if (active) setMeta(d) })
+        .catch(e => { if (active) setErrors(prev => ({ ...prev, meta: e.message })) })
+        .finally(() => { if (active) setLoadingChannels(prev => ({ ...prev, meta: false })) })
 
       safeFetch(`/api/meta/summary?start=${ps}&end=${pe}`)
-        .then(d => setMetaPrev(d)).catch(() => {})
+        .then(d => { if (active) setMetaPrev(d) }).catch(() => {})
 
       safeFetch(`/api/klaviyo/summary?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`)
-        .then(d => setKlaviyo(d))
-        .catch(e => setErrors(prev => ({ ...prev, klaviyo: e.message })))
-        .finally(() => setLoadingChannels(prev => ({ ...prev, klaviyo: false })))
+        .then(d => { if (active) setKlaviyo(d) })
+        .catch(e => { if (active) setErrors(prev => ({ ...prev, klaviyo: e.message })) })
+        .finally(() => { if (active) setLoadingChannels(prev => ({ ...prev, klaviyo: false })) })
 
       safeFetch(`/api/search-console/summary?start=${startDate}&end=${endDate}`)
-        .then(d => setGsc(d))
-        .catch(e => setErrors(prev => ({ ...prev, gsc: e.message })))
-        .finally(() => setLoadingChannels(prev => ({ ...prev, gsc: false })))
+        .then(d => { if (active) setGsc(d) })
+        .catch(e => { if (active) setErrors(prev => ({ ...prev, gsc: e.message })) })
+        .finally(() => { if (active) setLoadingChannels(prev => ({ ...prev, gsc: false })) })
 
       Promise.allSettled([
         safeFetch(`/api/google-ads/daily?start=${startDate}&end=${endDate}`),
         safeFetch(`/api/meta/daily?start=${startDate}&end=${endDate}`),
       ]).then(([gRes, mRes]) => {
+        if (!active) return
         if (gRes.status === 'fulfilled') setGAdsDaily(gRes.value)
         if (mRes.status === 'fulfilled') setMetaDaily(mRes.value)
-      }).finally(() => setLoadingDaily(false))
+      }).finally(() => { if (active) setLoadingDaily(false) })
 
       safeFetch(`/api/overview/extended?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`)
-        .then(d => setOverviewExt(d))
+        .then(d => { if (active) setOverviewExt(d) })
         .catch(() => {})
-        .finally(() => setLoadingExtended(false))
+        .finally(() => { if (active) setLoadingExtended(false) })
     }, 600)
-    return () => clearTimeout(t)
+    return () => { active = false; clearTimeout(t) }
   }, [startDate, endDate])
+
+  const chartKey = `${startDate}_${endDate}`
 
   const totalSpend = (gAds?.cost ?? 0) + (meta?.spend ?? 0)
   const prevTotalSpend = (gAdsPrev?.cost ?? 0) + (metaPrev?.spend ?? 0)
@@ -324,28 +348,46 @@ export default function OverviewPage() {
                       <StatCard
                         label={tr('dashboard.stat.totalSpend')}
                         tooltipKey="tooltip.spend"
-                        value={<AnimatedNumber value={totalSpend} delay={0} formatter={n => fmtEur(n)} />}
+                        value={
+                          loadingChannels.gAds || loadingChannels.meta
+                            ? <ValueSkeleton wide />
+                            : <AnimatedNumber value={totalSpend} delay={0} formatter={n => fmtEur(n)} />
+                        }
                         change={pctChg(totalSpend, prevTotalSpend) != null ? { value: Math.abs(pctChg(totalSpend, prevTotalSpend)!), isPositive: pctChg(totalSpend, prevTotalSpend)! <= 0 } : undefined}
                         icon={Euro} delay={0}
                       />
                       <StatCard
                         label={tr('dashboard.stat.totalLeads')}
                         tooltipKey="tooltip.leads"
-                        value={<AnimatedNumber value={totalLeads} delay={100} />}
+                        value={
+                          loadingChannels.gAds || loadingChannels.meta
+                            ? <ValueSkeleton />
+                            : <AnimatedNumber value={totalLeads} delay={100} />
+                        }
                         change={pctChg(totalLeads, prevTotalLeads) != null ? { value: Math.abs(pctChg(totalLeads, prevTotalLeads)!), isPositive: pctChg(totalLeads, prevTotalLeads)! >= 0 } : undefined}
                         icon={Target} delay={100}
                       />
                       <StatCard
                         label={tr('dashboard.stat.avgCpl')}
                         tooltipKey="tooltip.kpl"
-                        value={avgCpl !== null ? <AnimatedNumber value={avgCpl} delay={200} formatter={n => fmtEur(n)} /> : '—'}
+                        value={
+                          loadingChannels.gAds || loadingChannels.meta
+                            ? <ValueSkeleton />
+                            : avgCpl !== null
+                              ? <AnimatedNumber value={avgCpl} delay={200} formatter={n => fmtEur(n)} />
+                              : '—'
+                        }
                         change={avgCpl !== null && prevAvgCpl !== null && pctChg(avgCpl, prevAvgCpl) != null ? { value: Math.abs(pctChg(avgCpl, prevAvgCpl)!), isPositive: pctChg(avgCpl, prevAvgCpl)! <= 0 } : undefined}
                         icon={Target} delay={200}
                       />
                       <StatCard
                         label={tr('dashboard.stat.totalImpressions')}
                         tooltipKey="tooltip.impressions"
-                        value={<AnimatedNumber value={totalImpressions} delay={300} formatter={n => fmtK(n)} />}
+                        value={
+                          loadingChannels.gAds || loadingChannels.meta
+                            ? <ValueSkeleton />
+                            : <AnimatedNumber value={totalImpressions} delay={300} formatter={n => fmtK(n)} />
+                        }
                         change={pctChg(totalImpressions, prevTotalImpressions) != null ? { value: Math.abs(pctChg(totalImpressions, prevTotalImpressions)!), isPositive: pctChg(totalImpressions, prevTotalImpressions)! >= 0 } : undefined}
                         icon={Eye} delay={300}
                       />
@@ -500,27 +542,25 @@ export default function OverviewPage() {
                           {loadingOverviewCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                         </div>
                         <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.chart.monthlyLeadsDesc')}</p>
-                        {loadingOverviewCharts ? (
-                          <ChartSkeleton height={240} />
-                        ) : (
-                        <ResponsiveContainer width="100%" height={240}>
-                          <BarChart data={monthlyLeadsChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-                            <XAxis dataKey="label" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                            <Tooltip
-                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
-                              labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
-                              itemStyle={{ color: tooltipText, fontSize: 12 }}
-                              formatter={(v: number, name: string) => [fmt(v, 0), name === 'gAds' ? tr('dashboard.channel.gAds') : name === 'meta' ? tr('dashboard.channel.meta') : tr('dashboard.stat.totalLeads')]}
-                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
-                            />
-                            <Legend wrapperStyle={{ fontSize: 12, color: chartTick }} />
-                            <Bar dataKey="gAds" name={tr('dashboard.channel.gAds')} stackId="leads" fill="#FF4D00" radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="meta" name={tr('dashboard.channel.meta')} stackId="leads" fill="#4F7EFF" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                        )}
+                        <ChartFrame loading={loadingOverviewCharts} height={240} chartKey={`monthly-${chartKey}`}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={monthlyLeadsChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
+                              <XAxis dataKey="label" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                              <Tooltip
+                                contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                                labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                                itemStyle={{ color: tooltipText, fontSize: 12 }}
+                                formatter={(v: number, name: string) => [fmt(v, 0), name === 'gAds' ? tr('dashboard.channel.gAds') : name === 'meta' ? tr('dashboard.channel.meta') : tr('dashboard.stat.totalLeads')]}
+                                cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                              />
+                              <Legend wrapperStyle={{ fontSize: 12, color: chartTick }} />
+                              <Bar dataKey="gAds" name={tr('dashboard.channel.gAds')} stackId="leads" fill="#FF4D00" radius={[0, 0, 0, 0]} isAnimationActive={false} />
+                              <Bar dataKey="meta" name={tr('dashboard.channel.meta')} stackId="leads" fill="#4F7EFF" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </ChartFrame>
                       </div>
                     )}
 
@@ -532,27 +572,25 @@ export default function OverviewPage() {
                           {loadingOverviewCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                         </div>
                         <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.chart.momByChannelDesc')}</p>
-                        {loadingOverviewCharts ? (
-                          <ChartSkeleton height={220} />
-                        ) : (
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={momChartData} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} horizontal={false} />
-                            <XAxis type="number" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${fmt(v)}%`} />
-                            <YAxis type="category" dataKey="channel" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
-                            <Tooltip
-                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
-                              formatter={(v: number) => [`${v >= 0 ? '+' : ''}${fmt(v)}%`, tr('dashboard.pipeline.momLeads')]}
-                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
-                            />
-                            <Bar dataKey="growth" radius={[0, 4, 4, 0]}>
-                              {momChartData.map((entry, index) => (
-                                <Cell key={index} fill={entry.fill} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                        )}
+                        <ChartFrame loading={loadingOverviewCharts} height={220} chartKey={`mom-${chartKey}`}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={momChartData} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} horizontal={false} />
+                              <XAxis type="number" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${fmt(v)}%`} />
+                              <YAxis type="category" dataKey="channel" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
+                              <Tooltip
+                                contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                                formatter={(v: number) => [`${v >= 0 ? '+' : ''}${fmt(v)}%`, tr('dashboard.pipeline.momLeads')]}
+                                cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                              />
+                              <Bar dataKey="growth" radius={[0, 4, 4, 0]} isAnimationActive={false}>
+                                {momChartData.map((entry, index) => (
+                                  <Cell key={index} fill={entry.fill} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </ChartFrame>
                       </div>
                     )}
 
@@ -564,28 +602,26 @@ export default function OverviewPage() {
                           {loadingDaily && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                         </div>
                         <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.chart.leadsTrendDesc')}</p>
-                        {loadingDaily ? (
-                          <ChartSkeleton height={220} />
-                        ) : (
-                        <ResponsiveContainer width="100%" height={220}>
-                          <LineChart data={dailyLeadsChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-                            <XAxis dataKey="label" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                            <YAxis tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                            <Tooltip
-                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
-                              labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
-                              itemStyle={{ color: tooltipText, fontSize: 12 }}
-                              formatter={(v: number, name: string) => [fmt(v, 0), name === 'gAds' ? tr('dashboard.channel.gAds') : name === 'meta' ? tr('dashboard.channel.meta') : tr('dashboard.stat.totalLeads')]}
-                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
-                            />
-                            <Legend wrapperStyle={{ fontSize: 12, color: chartTick }} />
-                            <Line type="monotone" dataKey="total" name={tr('dashboard.stat.totalLeads')} stroke="#10B981" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="gAds" name={tr('dashboard.channel.gAds')} stroke="#FF4D00" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
-                            <Line type="monotone" dataKey="meta" name={tr('dashboard.channel.meta')} stroke="#4F7EFF" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
-                          </LineChart>
-                        </ResponsiveContainer>
-                        )}
+                        <ChartFrame loading={loadingDaily} height={220} chartKey={`daily-${chartKey}`}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={dailyLeadsChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
+                              <XAxis dataKey="label" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                              <YAxis tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                              <Tooltip
+                                contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                                labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                                itemStyle={{ color: tooltipText, fontSize: 12 }}
+                                formatter={(v: number, name: string) => [fmt(v, 0), name === 'gAds' ? tr('dashboard.channel.gAds') : name === 'meta' ? tr('dashboard.channel.meta') : tr('dashboard.stat.totalLeads')]}
+                                cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                              />
+                              <Legend wrapperStyle={{ fontSize: 12, color: chartTick }} />
+                              <Line type="monotone" dataKey="total" name={tr('dashboard.stat.totalLeads')} stroke="#10B981" strokeWidth={2} dot={false} isAnimationActive={false} />
+                              <Line type="monotone" dataKey="gAds" name={tr('dashboard.channel.gAds')} stroke="#FF4D00" strokeWidth={1.5} dot={false} strokeDasharray="4 4" isAnimationActive={false} />
+                              <Line type="monotone" dataKey="meta" name={tr('dashboard.channel.meta')} stroke="#4F7EFF" strokeWidth={1.5} dot={false} strokeDasharray="4 4" isAnimationActive={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </ChartFrame>
                       </div>
                     )}
 
@@ -597,25 +633,23 @@ export default function OverviewPage() {
                           <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.spendByChannel')}</p>
                           {loadingBottomCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                         </div>
-                        {loadingBottomCharts ? (
-                          <ChartSkeleton height={220} />
-                        ) : (
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={spendChartData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-                            <XAxis dataKey="channel" tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `€${fmt(v, 0)}`} />
-                            <Tooltip
-                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
-                              labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
-                              itemStyle={{ color: tooltipText, fontSize: 12 }}
-                              formatter={(v: number) => [fmtEur(v), tr('dashboard.channelLabel.spend')]}
-                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
-                            />
-                            <Bar dataKey="spend" fill="#FF4D00" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                        )}
+                        <ChartFrame loading={loadingBottomCharts} height={220} chartKey={`spend-${chartKey}`}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={spendChartData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
+                              <XAxis dataKey="channel" tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `€${fmt(v, 0)}`} />
+                              <Tooltip
+                                contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                                labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                                itemStyle={{ color: tooltipText, fontSize: 12 }}
+                                formatter={(v: number) => [fmtEur(v), tr('dashboard.channelLabel.spend')]}
+                                cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                              />
+                              <Bar dataKey="spend" fill="#FF4D00" radius={[6, 6, 0, 0]} isAnimationActive={false} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </ChartFrame>
                       </div>
 
                       {/* Leads / Conversions by Channel */}
@@ -624,25 +658,23 @@ export default function OverviewPage() {
                           <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.leadsByChannel')}</p>
                           {loadingBottomCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                         </div>
-                        {loadingBottomCharts ? (
-                          <ChartSkeleton height={220} />
-                        ) : (
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={leadsChartData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-                            <XAxis dataKey="channel" tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                            <Tooltip
-                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
-                              labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
-                              itemStyle={{ color: tooltipText, fontSize: 12 }}
-                              formatter={(v: number) => [fmt(v, 0), tr('dashboard.channelLabel.leads')]}
-                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
-                            />
-                            <Bar dataKey="leads" fill="#10B981" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                        )}
+                        <ChartFrame loading={loadingBottomCharts} height={220} chartKey={`leads-bar-${chartKey}`}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={leadsChartData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
+                              <XAxis dataKey="channel" tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                              <Tooltip
+                                contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                                labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                                itemStyle={{ color: tooltipText, fontSize: 12 }}
+                                formatter={(v: number) => [fmt(v, 0), tr('dashboard.channelLabel.leads')]}
+                                cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                              />
+                              <Bar dataKey="leads" fill="#10B981" radius={[6, 6, 0, 0]} isAnimationActive={false} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </ChartFrame>
                       </div>
                     </div>
 
@@ -657,28 +689,31 @@ export default function OverviewPage() {
                         {loadingBottomCharts ? (
                           <ChartSkeleton height={200} />
                         ) : (
-                        <div className="flex items-center gap-6">
-                          <ResponsiveContainer width="50%" height={200}>
-                            <PieChart>
-                              <Pie
-                                data={spendPieData}
-                                cx="50%" cy="50%"
-                                innerRadius={55} outerRadius={80}
-                                paddingAngle={3}
-                                dataKey="value"
-                              >
-                                {spendPieData.map((entry, index) => (
-                                  <Cell key={index} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip
-                                contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
-                                labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
-                                itemStyle={{ color: tooltipText, fontSize: 12 }}
-                                formatter={(v: number) => [fmtEur(v), tr('dashboard.channelLabel.spend')]}
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
+                        <div key={`pie-${chartKey}`} className="flex items-center gap-6">
+                          <div style={{ width: '50%', height: 200 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={spendPieData}
+                                  cx="50%" cy="50%"
+                                  innerRadius={55} outerRadius={80}
+                                  paddingAngle={3}
+                                  dataKey="value"
+                                  isAnimationActive={false}
+                                >
+                                  {spendPieData.map((entry, index) => (
+                                    <Cell key={index} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                                  labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                                  itemStyle={{ color: tooltipText, fontSize: 12 }}
+                                  formatter={(v: number) => [fmtEur(v), tr('dashboard.channelLabel.spend')]}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
                           <div className="space-y-4 flex-1">
                             {spendPieData.map(d => (
                               <div key={d.name}>
@@ -711,28 +746,26 @@ export default function OverviewPage() {
                           <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.chart.ctrByChannel')}</p>
                           {loadingBottomCharts && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                         </div>
-                        {loadingBottomCharts ? (
-                          <ChartSkeleton height={200} />
-                        ) : (
-                        <ResponsiveContainer width="100%" height={200}>
-                          <BarChart
-                            data={ctrChartData}
-                            margin={{ top: 0, right: 8, left: 8, bottom: 0 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-                            <XAxis dataKey="channel" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${fmt(v)}%`} />
-                            <Tooltip
-                              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
-                              labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
-                              itemStyle={{ color: tooltipText, fontSize: 12 }}
-                              formatter={(v: number) => [`${fmt(v)}%`, tr('dashboard.channelLabel.ctr')]}
-                              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
-                            />
-                            <Bar dataKey="ctr" fill="#8B5CF6" radius={[6, 6, 0, 0]} animationDuration={1200} animationBegin={100} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                        )}
+                        <ChartFrame loading={loadingBottomCharts} height={200} chartKey={`ctr-${chartKey}`}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={ctrChartData}
+                              margin={{ top: 0, right: 8, left: 8, bottom: 0 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
+                              <XAxis dataKey="channel" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fill: chartTick, fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${fmt(v)}%`} />
+                              <Tooltip
+                                contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 10, color: tooltipText, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', padding: '10px 14px' }}
+                                labelStyle={{ color: tooltipText, fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                                itemStyle={{ color: tooltipText, fontSize: 12 }}
+                                formatter={(v: number) => [`${fmt(v)}%`, tr('dashboard.channelLabel.ctr')]}
+                                cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                              />
+                              <Bar dataKey="ctr" fill="#8B5CF6" radius={[6, 6, 0, 0]} isAnimationActive={false} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </ChartFrame>
                       </div>
                     </div>
                     )}
