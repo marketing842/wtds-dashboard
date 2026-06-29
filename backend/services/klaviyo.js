@@ -77,9 +77,18 @@ async function resolveConversionMetric(creds) {
 }
 
 function statisticsForMetric(metricName) {
-  const commerce = ['Placed Order', 'Ordered Product', 'Checkout Started'];
-  if (commerce.includes(metricName)) return [...BASE_STATS, ...CONVERSION_STATS];
+  if (COMMERCE_METRICS.includes(metricName)) return [...BASE_STATS, ...CONVERSION_STATS];
   return BASE_STATS;
+}
+
+export const COMMERCE_METRICS = ['Placed Order', 'Ordered Product', 'Checkout Started'];
+
+export async function getKlaviyoRevenueSupport(creds) {
+  const metric = await resolveConversionMetric(creds);
+  return {
+    supported: COMMERCE_METRICS.includes(metric.name),
+    conversion_metric: metric.name,
+  };
 }
 
 function headers(creds) {
@@ -282,9 +291,10 @@ function withRates(totals) {
 }
 
 export async function getKlaviyoSummary(start, end, compareStart, compareEnd, creds) {
-  const [flowResults, campaignResults] = await Promise.all([
+  const [flowResults, campaignResults, revenueSupport] = await Promise.all([
     fetchFlowReport(start, end, creds),
-    fetchCampaignReport(start, end, creds)
+    fetchCampaignReport(start, end, creds),
+    getKlaviyoRevenueSupport(creds),
   ]);
 
   const allItems = [...flowResults, ...campaignResults];
@@ -304,7 +314,7 @@ export async function getKlaviyoSummary(start, end, compareStart, compareEnd, cr
     ));
   }
 
-  return { current, prev };
+  return { current, prev, revenue_support: revenueSupport };
 }
 
 export async function getKlaviyoFlows(start, end, creds) {

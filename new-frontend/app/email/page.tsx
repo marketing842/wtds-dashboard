@@ -185,7 +185,9 @@ export default function EmailPage() {
 
   const bestFlow = pickBestFlow(flows)
 
-  const hasRevenueData = revenueChart.length > 0 || (cur?.revenue ?? 0) > 0
+  const revenueSupported = summary?.revenue_support?.supported === true
+  const revenueMetric = summary?.revenue_support?.conversion_metric ?? ''
+  const hasRevenueData = revenueSupported && (revenueChart.length > 0 || (cur?.revenue ?? 0) > 0)
 
   const stats = cur ? [
     {
@@ -350,8 +352,14 @@ export default function EmailPage() {
                     ) : (
                       <div className="flex flex-col items-center justify-center h-[220px] rounded-lg border border-dashed border-[var(--border)] px-6 text-center">
                         <Euro className="w-8 h-8 text-muted-foreground/40 mb-3" />
-                        <p className="text-muted-foreground text-sm font-medium">{t('email.chart.revenueEmpty')}</p>
-                        <p className="text-muted-foreground/70 text-xs mt-2 max-w-xs leading-relaxed">{t('email.chart.revenueEmptyHint')}</p>
+                        <p className="text-muted-foreground text-sm font-medium">
+                          {revenueSupported ? t('email.chart.revenueZeroInPeriod') : t('email.chart.revenueEmpty')}
+                        </p>
+                        <p className="text-muted-foreground/70 text-xs mt-2 max-w-xs leading-relaxed">
+                          {revenueSupported
+                            ? t('email.chart.revenueZeroHint')
+                            : t('email.chart.revenueEmptyHint').replace('{metric}', revenueMetric || '—')}
+                        </p>
                       </div>
                     )}
                   </div>
