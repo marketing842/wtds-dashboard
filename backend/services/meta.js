@@ -66,18 +66,46 @@ function parseVideoPlayCurve(ins) {
 
 const VIDEO_INSIGHT_FIELDS = 'impressions,clicks,spend,ctr,video_play_actions,video_30_sec_watched_actions,video_avg_time_watched_actions,video_play_curve_actions,actions,action_values';
 
+function creativeRankingMode(ads) {
+  const totalLeads = ads.reduce((s, a) => s + (a.leads || 0), 0);
+  const totalPurchases = ads.reduce((s, a) => s + (a.purchases || 0), 0);
+  if (totalLeads > 0 && totalLeads >= totalPurchases) return 'leads';
+  if (totalPurchases > 0) return 'purchases';
+  return 'spend';
+}
+
 function rankCreatives(ads) {
+  const mode = creativeRankingMode(ads);
   return [...ads].sort((a, b) => {
-    if (b.spend !== a.spend) return b.spend - a.spend;
-    const aResults = (a.leads || 0) + (a.purchases || 0);
-    const bResults = (b.leads || 0) + (b.purchases || 0);
-    if (bResults !== aResults) return bResults - aResults;
-    const aCpr = aResults > 0 ? a.spend / aResults : Infinity;
-    const bCpr = bResults > 0 ? b.spend / bResults : Infinity;
-    if (aCpr !== bCpr) return aCpr - bCpr;
+    if (mode === 'leads') {
+      const aLeads = a.leads || 0;
+      const bLeads = b.leads || 0;
+      if (bLeads !== aLeads) return bLeads - aLeads;
+      if (aLeads > 0 && bLeads > 0) {
+        const aCpl = a.spend / aLeads;
+        const bCpl = b.spend / bLeads;
+        if (aCpl !== bCpl) return aCpl - bCpl;
+      }
+    } else if (mode === 'purchases') {
+      const aPurchases = a.purchases || 0;
+      const bPurchases = b.purchases || 0;
+      if (bPurchases !== aPurchases) return bPurchases - aPurchases;
+      if (aPurchases > 0 && bPurchases > 0) {
+        const aCpp = a.spend / aPurchases;
+        const bCpp = b.spend / bPurchases;
+        if (aCpp !== bCpp) return aCpp - bCpp;
+      }
+      const aRoas = a.roas ?? 0;
+      const bRoas = b.roas ?? 0;
+      if (bRoas !== aRoas) return bRoas - aRoas;
+    } else if (b.spend !== a.spend) {
+      return b.spend - a.spend;
+    }
+
     const aSoft = (a.hold_rate ?? 0) + (a.thumbstop_rate ?? 0);
     const bSoft = (b.hold_rate ?? 0) + (b.thumbstop_rate ?? 0);
-    return bSoft - aSoft;
+    if (bSoft !== aSoft) return bSoft - aSoft;
+    return b.spend - a.spend;
   });
 }
 

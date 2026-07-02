@@ -111,6 +111,8 @@ export default function OverviewPage() {
   const [gAdsDaily, setGAdsDaily] = useState<any[]>([])
   const [metaDaily, setMetaDaily] = useState<any[]>([])
   const [overviewExt, setOverviewExt] = useState<any>(null)
+  const [brandUplift, setBrandUplift] = useState<any>(null)
+  const [loadingBrand, setLoadingBrand] = useState(true)
   // Per-channel loading flags instead of one global spinner
   const [loadingChannels, setLoadingChannels] = useState({ gAds: true, meta: true, klaviyo: true, gsc: true })
   const [loadingExtended, setLoadingExtended] = useState(true)
@@ -124,11 +126,12 @@ export default function OverviewPage() {
       // Reset state & show loading per channel immediately
       setGAds(null); setGAdsPrev(null); setMeta(null); setMetaPrev(null)
       setKlaviyo(null); setGsc(null)
-      setGAdsDaily([]); setMetaDaily([]); setOverviewExt(null)
+      setGAdsDaily([]); setMetaDaily([]); setOverviewExt(null); setBrandUplift(null)
       setErrors({})
       setLoadingChannels({ gAds: true, meta: true, klaviyo: true, gsc: true })
       setLoadingExtended(true)
       setLoadingDaily(true)
+      setLoadingBrand(true)
 
       const { ps, pe } = getPrevRange(startDate, endDate)
 
@@ -179,6 +182,11 @@ export default function OverviewPage() {
         .then(d => { if (active) setOverviewExt(d) })
         .catch(() => {})
         .finally(() => { if (active) setLoadingExtended(false) })
+
+      safeFetch(`/api/brand-uplift?start=${startDate}&end=${endDate}&compare_start=${ps}&compare_end=${pe}`)
+        .then(d => { if (active) setBrandUplift(d) })
+        .catch(() => { if (active) setBrandUplift(null) })
+        .finally(() => { if (active) setLoadingBrand(false) })
     }, 600)
     return () => { active = false; clearTimeout(t) }
   }, [startDate, endDate])
@@ -233,6 +241,12 @@ export default function OverviewPage() {
     .sort((a, b) => a.date.localeCompare(b.date))
 
   const momLeads = pctChg(totalLeads, prevTotalLeads)
+  const branded = brandUplift?.branded
+  const brandTrend = (brandUplift?.trend ?? []).map((d: any) => ({
+    ...d,
+    label: shortDate(d.date),
+  }))
+  const showBrandUplift = branded?.configured || brandUplift?.direct
 
   const monthlyLeadsChart = (overviewExt?.monthly ?? []).map((m: any) => {
     const [y, mo] = (m.month ?? '').split('-').map(Number)
@@ -495,6 +509,82 @@ export default function OverviewPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Brand uplift — multi-channel signals */}
+                    {(loadingBrand || showBrandUplift) && (
+                      <div className="stat-card mb-8">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr('dashboard.brand.title')}</p>
+                          {loadingBrand && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        </div>
+                        <p className="text-muted-foreground text-xs mb-4">{tr('dashboard.brand.desc')}</p>
+                        {!loadingBrand && showBrandUplift && (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                              {branded?.configured && (
+                                <>
+                                  <div className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                                    <p className="text-xs text-muted-foreground mb-1">{tr('dashboard.brand.channelSeo')}</p>
+                                    <p className="text-xs text-muted-foreground mb-2">{tr('dashboard.brand.clicks')}</p>
+                                    <p className="text-xl font-bold text-foreground">{fmt(branded.clicks, 0)}</p>
+                                    {branded.growth_pct != null && (
+                                      <p className={`text-xs mt-1 ${branded.growth_pct >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                        {branded.growth_pct >= 0 ? '+' : ''}{fmt(branded.growth_pct)}% {tr('common.vsPrev')}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                                    <p className="text-xs text-muted-foreground mb-1">{tr('dashboard.brand.channelSeo')}</p>
+                                    <p className="text-xs text-muted-foreground mb-2">{tr('dashboard.brand.ctr')}</p>
+                                    <p className="text-xl font-bold text-accent">{fmt(branded.ctr)}%</p>
+                                  </div>
+                                </>
+                              )}
+                              {brandUplift?.direct && (
+                                <div className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                                  <p className="text-xs text-muted-foreground mb-1">{tr('dashboard.brand.channelDirect')}</p>
+                                  <p className="text-xs text-muted-foreground mb-2">{tr('dashboard.brand.direct')}</p>
+                                  <p className="text-xl font-bold text-foreground">{fmt(brandUplift.direct.sessions, 0)}</p>
+                                  {brandUplift.direct.growth_pct != null && (
+                                    <p className={`text-xs mt-1 ${brandUplift.direct.growth_pct >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                      {brandUplift.direct.growth_pct >= 0 ? '+' : ''}{fmt(brandUplift.direct.growth_pct)}% {tr('common.vsPrev')}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                              {(gAds || meta) && (
+                                <div className="rounded-lg p-3" style={{ background: 'var(--border)' }}>
+                                  <p className="text-xs text-muted-foreground mb-1">{tr('dashboard.brand.channelPaid')}</p>
+                                  <p className="text-xs text-muted-foreground mb-2">{tr('dashboard.brand.paidReach')}</p>
+                                  <p className="text-xl font-bold text-foreground">{fmtK(totalImpressions)}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">{tr('dashboard.brand.paidNote')}</p>
+                                </div>
+                              )}
+                            </div>
+                            {branded?.configured && branded.terms?.length > 0 && (
+                              <p className="text-xs text-muted-foreground mb-4">
+                                {tr('dashboard.brand.terms')}: <span className="text-foreground font-medium">{branded.terms.join(', ')}</span>
+                              </p>
+                            )}
+                            {brandTrend.length > 0 && (
+                              <ResponsiveContainer width="100%" height={160}>
+                                <LineChart data={brandTrend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
+                                  <XAxis dataKey="label" tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                                  <YAxis tick={{ fill: chartTick, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                  <Tooltip
+                                    contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBdr}`, borderRadius: 8 }}
+                                    labelStyle={{ color: tooltipText, fontSize: 12 }}
+                                    formatter={(v: number) => [fmt(v, 0), tr('dashboard.brand.clicks')]}
+                                  />
+                                  <Line type="monotone" dataKey="clicks" stroke="#FF4D00" strokeWidth={2} dot={false} isAnimationActive={false} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     {/* Pipeline value + funnel stats */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

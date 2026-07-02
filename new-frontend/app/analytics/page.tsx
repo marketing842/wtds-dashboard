@@ -156,9 +156,25 @@ export default function AnalyticsPage() {
 
                 {/* Secondary KPIs */}
                 <div className="grid grid-cols-2 gap-6 mb-8">
-                  <div className="stat-card flex items-center justify-between py-4">
-                    <p className="text-muted-foreground text-sm font-medium">{t('analytics.stat.bounceRate')}</p>
-                    <p className="text-2xl font-bold text-accent">{fmt(summary.bounce_rate, 1)}%</p>
+                  <div className="stat-card py-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-muted-foreground text-sm font-medium">{t('analytics.stat.bounceRate')}</p>
+                      <div className="text-right">
+                        <p className={`text-2xl font-bold ${summary.bounce_rate <= (summary.bounce_benchmark?.max ?? 55) ? 'text-emerald-500' : 'text-amber-400'}`}>
+                          {fmt(summary.bounce_rate, 1)}%
+                        </p>
+                        {summary.bounce_benchmark && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t('analytics.stat.bounceBenchmark').replace('{min}', fmt(summary.bounce_benchmark.min, 0)).replace('{max}', fmt(summary.bounce_benchmark.max, 0))}
+                          </p>
+                        )}
+                        {pctChg(summary.bounce_rate, prevSummary?.bounce_rate) != null && (
+                          <p className={`text-xs mt-1 ${pctChg(summary.bounce_rate, prevSummary?.bounce_rate)! <= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                            {pctChg(summary.bounce_rate, prevSummary?.bounce_rate)! <= 0 ? '↓' : '↑'} {fmt(Math.abs(pctChg(summary.bounce_rate, prevSummary?.bounce_rate)!), 1)}% {t('common.vsPrev')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="stat-card flex items-center justify-between py-4">
                     <p className="text-muted-foreground text-sm font-medium">{t('analytics.stat.avgSession')}</p>

@@ -6,7 +6,7 @@ import { Header } from '@/components/Header'
 import { StatCard } from '@/components/StatCard'
 import { AnimatedNumber } from '@/components/AnimatedNumber'
 import { DateRangeLabel } from '@/components/DateRangeLabel'
-import { MetricKpi } from '@/components/MetricLabel'
+import { MetricKpi, MetricLabel } from '@/components/MetricLabel'
 import { useDateRange } from '@/lib/date-range-context'
 import { Eye, MousePointerClick, Euro, Loader2, ShoppingCart, Film, Image } from 'lucide-react'
 import {
@@ -29,6 +29,12 @@ function getPrevRange(start: string, end: string) {
 function pctChg(a: number, b: number | null | undefined) {
   if (!b || b === 0) return null
   return ((a - b) / b) * 100
+}
+
+function kpiChange(cur: number, prev: number | null | undefined, lowerIsBetter = false) {
+  const v = pctChg(cur, prev)
+  if (v == null) return undefined
+  return { value: Math.abs(v), isPositive: lowerIsBetter ? v <= 0 : v >= 0 }
 }
 
 const RANK_COLOR = ['text-yellow-400', 'text-muted-foreground', 'text-orange-400']
@@ -240,17 +246,17 @@ export default function MetaPage() {
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                  <MetricKpi label={t('meta.stat.frequency')} value={cur.frequency > 0 ? fmt(cur.frequency) : '—'} tooltipKey="tooltip.frequency" />
-                  <MetricKpi label={t('meta.stat.cpm')} value={cur.cpm > 0 ? fmtEur(cur.cpm) : '—'} tooltipKey="tooltip.kpm" />
-                  <MetricKpi label={t('meta.stat.uniqueCtr')} value={cur.unique_ctr > 0 ? `${fmt(cur.unique_ctr)}%` : '—'} tooltipKey="tooltip.uniqueCtr" />
-                  <MetricKpi label={t('meta.stat.ctr')} value={`${fmt(cur.ctr)}%`} tooltipKey="tooltip.ctr" />
+                  <MetricKpi label={t('meta.stat.frequency')} value={cur.frequency > 0 ? fmt(cur.frequency) : '—'} tooltipKey="tooltip.frequency" change={kpiChange(cur.frequency, prev?.frequency, true)} />
+                  <MetricKpi label={t('meta.stat.cpm')} value={cur.cpm > 0 ? fmtEur(cur.cpm) : '—'} tooltipKey="tooltip.kpm" change={kpiChange(cur.cpm, prev?.cpm, true)} />
+                  <MetricKpi label={t('meta.stat.uniqueCtr')} value={cur.unique_ctr > 0 ? `${fmt(cur.unique_ctr)}%` : '—'} tooltipKey="tooltip.uniqueCtr" change={kpiChange(cur.unique_ctr, prev?.unique_ctr)} />
+                  <MetricKpi label={t('meta.stat.ctr')} value={`${fmt(cur.ctr)}%`} tooltipKey="tooltip.ctr" change={kpiChange(cur.ctr, prev?.ctr)} />
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <MetricKpi label={t('meta.stat.cpc')} value={fmtEur(cur.cpc)} tooltipKey="tooltip.kpk" />
+                  <MetricKpi label={t('meta.stat.cpc')} value={fmtEur(cur.cpc)} tooltipKey="tooltip.kpk" change={kpiChange(cur.cpc, prev?.cpc, true)} />
                   {isLeadsCampaign
-                    ? <MetricKpi label={t('meta.stat.cpl')} value={cpl > 0 ? fmtEur(cpl) : '—'} tooltipKey="tooltip.kpl" accent />
-                    : <MetricKpi label={t('meta.stat.roas')} value={cur.roas > 0 ? `${fmt(cur.roas)}x` : '—'} tooltipKey="tooltip.roas" accent />}
+                    ? <MetricKpi label={t('meta.stat.cpl')} value={cpl > 0 ? fmtEur(cpl) : '—'} tooltipKey="tooltip.kpl" accent change={cpl > 0 && prev && prev.leads > 0 ? kpiChange(cpl, prev.spend / prev.leads, true) : undefined} />
+                    : <MetricKpi label={t('meta.stat.roas')} value={cur.roas > 0 ? `${fmt(cur.roas)}x` : '—'} tooltipKey="tooltip.roas" accent change={kpiChange(cur.roas, prev?.roas)} />}
                   {isLeadsCampaign
                     ? <MetricKpi label={t('meta.stat.leads')} value={fmt(cur.leads, 0)} tooltipKey="tooltip.leads" />
                     : <MetricKpi label={t('meta.stat.revenue')} value={cur.purchase_value > 0 ? fmtEur(cur.purchase_value) : '—'} tooltipKey="tooltip.roas" />}
@@ -304,7 +310,7 @@ export default function MetaPage() {
                             <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                             <XAxis dataKey="name" tick={{ fill: chart.tick, fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={50} />
                             <YAxis tick={{ fill: chart.tick, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
-                            <Tooltip {...tooltipStyle} formatter={(v: number) => [`${fmt(v)}%`, '']} cursor={{ fill: chart.cursorFill }} />
+                            <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [`${fmt(v)}%`, name]} cursor={{ fill: chart.cursorFill }} />
                             <Legend wrapperStyle={{ fontSize: 12, color: chart.tick }} />
                             <Bar dataKey="thumbstop" name={t('meta.stat.thumbstop')} fill="#FF4D00" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="hold" name={t('meta.stat.holdRate')} fill="#8B5CF6" radius={[4, 4, 0, 0]} />
@@ -522,19 +528,25 @@ export default function MetaPage() {
                             </div>
                             {ad.thumbstop_rate != null && (
                               <div>
-                                <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.thumbstop')}</p>
+                                <p className="text-muted-foreground text-xs mb-0.5">
+                                  <MetricLabel label={t('meta.stat.thumbstop')} tooltipKey="tooltip.thumbstop" />
+                                </p>
                                 <p className="text-purple-700 dark:text-purple-300 text-sm font-bold">{fmt(ad.thumbstop_rate)}%</p>
                               </div>
                             )}
                             {ad.hold_rate != null && (
                               <div>
-                                <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.holdRate')}</p>
+                                <p className="text-muted-foreground text-xs mb-0.5">
+                                  <MetricLabel label={t('meta.stat.holdRate')} tooltipKey="tooltip.holdRate" />
+                                </p>
                                 <p className="text-blue-700 dark:text-blue-300 text-sm font-bold">{fmt(ad.hold_rate)}%</p>
                               </div>
                             )}
                             {ad.avg_watch_sec != null && (
                               <div className="col-span-2">
-                                <p className="text-muted-foreground text-xs mb-0.5">{t('meta.stat.avgWatch')}</p>
+                                <p className="text-muted-foreground text-xs mb-0.5">
+                                  <MetricLabel label={t('meta.stat.avgWatch')} tooltipKey="tooltip.avgWatch" />
+                                </p>
                                 <p className="text-emerald-700 dark:text-emerald-300 text-sm font-bold">{fmt(ad.avg_watch_sec)}s</p>
                               </div>
                             )}

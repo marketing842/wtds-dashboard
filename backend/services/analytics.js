@@ -29,6 +29,8 @@ async function runReport(body, creds) {
   return res.data;
 }
 
+const BOUNCE_RATE_BENCHMARK = { min: 41, max: 55, label: 'All websites' };
+
 export async function getGA4Summary(start, end, creds) {
   const data = await runReport({
     dateRanges: [{ startDate: start, endDate: end }],
@@ -49,6 +51,7 @@ export async function getGA4Summary(start, end, creds) {
     sessions: Math.round(Number(t[1]?.value ?? 0)),
     pageviews: Math.round(Number(t[2]?.value ?? 0)),
     bounce_rate: parseFloat(((Number(t[3]?.value ?? 0)) * 100).toFixed(1)),
+    bounce_benchmark: BOUNCE_RATE_BENCHMARK,
     avg_session: Math.round(Number(t[4]?.value ?? 0)),
     new_users: Math.round(Number(t[5]?.value ?? 0)),
   };

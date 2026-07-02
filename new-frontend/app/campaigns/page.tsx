@@ -33,6 +33,12 @@ function pctChg(a: number, b: number | null | undefined) {
   return ((a - b) / b) * 100
 }
 
+function kpiChange(cur: number, prev: number | null | undefined, lowerIsBetter = false) {
+  const v = pctChg(cur, prev)
+  if (v == null) return undefined
+  return { value: Math.abs(v), isPositive: lowerIsBetter ? v <= 0 : v >= 0 }
+}
+
 const MATCH_BADGE: Record<string, { key: string; color: string }> = {
   EXACT:  { key: 'campaigns.match.exact',  color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30' },
   BROAD:  { key: 'campaigns.match.broad',  color: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30' },
@@ -255,9 +261,9 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                  <MetricKpi label={t('campaigns.stat.ctr')} value={`${fmt(cur.ctr)}%`} tooltipKey="tooltip.ctr" />
-                  <MetricKpi label={t('campaigns.stat.avgCpc')} value={fmtEur(cur.avg_cpc)} tooltipKey="tooltip.kpk" />
-                  <MetricKpi label={t('campaigns.stat.cpa')} value={cur.conversions > 0 ? fmtEur(cur.cpa) : '—'} tooltipKey="tooltip.kpa" accent />
+                  <MetricKpi label={t('campaigns.stat.ctr')} value={`${fmt(cur.ctr)}%`} tooltipKey="tooltip.ctr" change={kpiChange(cur.ctr, prev?.ctr)} />
+                  <MetricKpi label={t('campaigns.stat.avgCpc')} value={fmtEur(cur.avg_cpc)} tooltipKey="tooltip.kpk" change={kpiChange(cur.avg_cpc, prev?.avg_cpc, true)} />
+                  <MetricKpi label={t('campaigns.stat.cpa')} value={cur.conversions > 0 ? fmtEur(cur.cpa) : '—'} tooltipKey="tooltip.kpa" accent change={cur.conversions > 0 && prev && prev.conversions > 0 ? kpiChange(cur.cpa, prev.cpa, true) : undefined} />
                 </div>
 
                 {/* Impression share */}
@@ -354,9 +360,9 @@ export default function CampaignsPage() {
                       <table className="w-full min-w-[400px] text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)]">
-                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.table.keyword')}</th>
+                            <th className="text-left text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.table.conversionAction')}</th>
                             <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.stat.conversions')}</th>
-                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.stat.cost')}</th>
+                            <th className="text-right text-muted-foreground text-xs font-medium px-4 py-3">{t('campaigns.table.convValue')}</th>
                           </tr>
                         </thead>
                         <tbody>

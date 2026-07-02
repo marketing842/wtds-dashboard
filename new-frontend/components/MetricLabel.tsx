@@ -114,15 +114,40 @@ interface MetricKpiProps {
   value: ReactNode
   tooltipKey?: string
   accent?: boolean
+  change?: { value: number; isPositive: boolean }
 }
 
-export function MetricKpi({ label, value, tooltipKey, accent = false }: MetricKpiProps) {
+export function MetricKpi({ label, value, tooltipKey, accent = false, change }: MetricKpiProps) {
+  const { t } = useLanguage()
+  const isUp = change?.isPositive === true
+
   return (
-    <div className="stat-card flex items-center justify-between py-4">
+    <div className="stat-card flex items-center justify-between py-4 gap-3">
       <p className="text-muted-foreground text-sm font-medium min-w-0 pr-3">
         <MetricLabel label={label} tooltipKey={tooltipKey} />
       </p>
-      <p className={`text-2xl font-bold flex-shrink-0 ${accent ? 'text-accent' : 'text-foreground'}`}>{value}</p>
+      <div className="text-right flex-shrink-0">
+        <p className={`text-2xl font-bold ${accent ? 'text-accent' : 'text-foreground'}`}>{value}</p>
+        {change ? (
+          <span
+            className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full mt-1"
+            style={isUp ? {
+              background: 'rgba(34,197,94,0.10)',
+              color: '#22C55E',
+              border: '1px solid rgba(34,197,94,0.22)',
+            } : {
+              background: 'rgba(239,68,68,0.10)',
+              color: '#EF4444',
+              border: '1px solid rgba(239,68,68,0.22)',
+            }}
+          >
+            {isUp ? '↑' : '↓'} {change.value.toFixed(1)}%
+            <span style={{ color: 'var(--text-subtle)', fontWeight: 400 }}>{t('common.vsPrev')}</span>
+          </span>
+        ) : (
+          <span className="inline-block h-5" />
+        )}
+      </div>
     </div>
   )
 }
